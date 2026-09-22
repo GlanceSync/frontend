@@ -1,1 +1,55 @@
-<h1>Hello GlanceSync</h1>
+<header class="site-header">
+  <a class="brand" routerLink="/">GlanceSync</a>
+
+  @if (currentUser(); as user) {
+    <nav class="header-nav">
+      <a routerLink="/chat" routerLinkActive="active" class="nav-link" title="Chats">
+        <app-icon name="message" />
+        <span class="nav-label">Chats</span>
+        @if (unreadTotal() > 0) {
+          <span class="badge" [attr.aria-label]="unreadTotal() + ' unread messages'">
+            {{ unreadTotal() }}
+          </span>
+        }
+      </a>
+
+      <a routerLink="/events" routerLinkActive="active" class="nav-link" title="Dates">
+        <app-icon name="calendar" />
+        <span class="nav-label">Dates</span>
+      </a>
+
+      <a routerLink="/notifications" routerLinkActive="active" class="nav-link"
+         title="Notifications" aria-label="Notifications">
+        <app-icon name="bell" />
+        <span class="nav-label">Alerts</span>
+        @if (notificationUnread() > 0) {
+          <span class="badge">{{ notificationUnread() }}</span>
+        }
+      </a>
+
+      <span class="username" [title]="connected() ? 'Connected' : 'Reconnecting…'">
+        <span class="dot" [class.dot-online]="connected()" aria-hidden="true"></span>
+        {{ user.username }}
+      </span>
+
+      <button type="button" class="icon-button" (click)="logout()" title="Log out" aria-label="Log out">
+        <app-icon name="log-out" />
+      </button>
+    </nav>
+  } @else {
+    <nav class="header-nav">
+      <a routerLink="/login">Sign in</a>
+      <a routerLink="/register">Register</a>
+    </nav>
+  }
+</header>
+
+<main class="site-main">
+  <router-outlet />
+</main>
+
+<app-call-overlay />
+
+<footer class="site-footer">
+  <small>GlanceSync · {{ year }}</small>
+</footer>

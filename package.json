@@ -7,7 +7,9 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:glanceSync": "node dist/glance-sync/server/server.mjs"
+    "serve:ssr:glanceSync": "node dist/glance-sync/server/server.mjs",
+    "start:lan": "node scripts/serve-lan.mjs",
+    "start:lan:ssl": "SSL=1 node scripts/serve-lan.mjs"
   },
   "private": true,
   "dependencies": {

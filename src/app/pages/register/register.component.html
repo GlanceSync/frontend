@@ -1,0 +1,40 @@
+<section class="auth-card">
+  <h1>Create your account</h1>
+  <p class="subtitle">Pick a username and a password you don't use anywhere else.</p>
+
+  @if (formError()) {
+    <p class="alert" role="alert">{{ formError() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label for="username">Username</label>
+    <input id="username" type="text" formControlName="username" autocomplete="username" />
+    @if (serverError('username')) {
+      <small class="field-error">{{ serverError('username') }}</small>
+    } @else if (form.controls.username.touched && form.controls.username.invalid) {
+      <small class="field-error">3–30 characters, letters, numbers and underscores only.</small>
+    }
+
+    <label for="password">Password</label>
+    <input id="password" type="password" formControlName="password" autocomplete="new-password" />
+    @if (serverError('password')) {
+      <small class="field-error">{{ serverError('password') }}</small>
+    } @else if (form.controls.password.touched && form.controls.password.invalid) {
+      <small class="field-error">At least 8 characters, with a letter and a digit.</small>
+    }
+
+    <label for="confirmPassword">Confirm password</label>
+    <input id="confirmPassword" type="password" formControlName="confirmPassword" autocomplete="new-password" />
+    @if (serverError('confirmPassword')) {
+      <small class="field-error">{{ serverError('confirmPassword') }}</small>
+    } @else if (form.controls.confirmPassword.touched && form.hasError('mismatch')) {
+      <small class="field-error">Passwords do not match.</small>
+    }
+
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Creating account…' : 'Create account' }}
+    </button>
+  </form>
+
+  <p class="switch">Already have an account? <a routerLink="/login">Sign in</a></p>
+</section>

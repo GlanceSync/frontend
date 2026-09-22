@@ -1,0 +1,112 @@
+@if (error(); as message) {
+  <div class="call-toast" role="alert">
+    <app-icon name="slash" [size]="16" />
+    <span>{{ message }}</span>
+    <button type="button" class="link-button" (click)="dismissError()">Dismiss</button>
+  </div>
+}
+
+@if (state() !== 'idle') {
+  <div class="call-overlay" role="dialog" aria-modal="true" aria-label="Call">
+    <div class="call-box">
+      @if (isVideo()) {
+        <!-- #stage is what goes fullscreen: the video and everything drawn over it. -->
+        <div class="call-video" #stage [class.is-fullscreen]="isFullscreen()"
+             (dblclick)="toggleFullscreen()">
+          <video #remoteVideo class="remote-video" autoplay playsinline></video>
+          <video #localVideo class="local-video" autoplay playsinline muted></video>
+
+          <div class="call-caption">
+            <span class="call-peer">{{ call()?.peerName }}</span>
+            <span class="call-status">
+              @if (state() !== 'active') { <span class="pulse" aria-hidden="true"></span> }
+              {{ statusText() }}
+            </span>
+          </div>
+
+          <button type="button" class="fullscreen-btn" (click)="toggleFullscreen()"
+                  [title]="isFullscreen() ? 'Exit full screen' : 'Full screen'"
+                  [attr.aria-label]="isFullscreen() ? 'Exit full screen' : 'Enter full screen'">
+            <app-icon [name]="isFullscreen() ? 'minimize' : 'maximize'" [size]="20" />
+          </button>
+
+          <!-- In fullscreen the overlay's own controls are off-screen, so the stage
+               carries its own copy. -->
+          @if (isFullscreen()) {
+            <div class="call-actions call-actions-overlay">
+              @if (state() === 'active') {
+                <button type="button" class="call-btn call-btn-toggle" [class.off]="!micEnabled()"
+                        (click)="toggleMic()"
+                        [attr.aria-label]="micEnabled() ? 'Mute microphone' : 'Unmute microphone'">
+                  <app-icon [name]="micEnabled() ? 'mic' : 'mic-off'" [size]="22" />
+                </button>
+                <button type="button" class="call-btn call-btn-toggle" [class.off]="!cameraEnabled()"
+                        (click)="toggleCamera()"
+                        [attr.aria-label]="cameraEnabled() ? 'Turn camera off' : 'Turn camera on'">
+                  <app-icon [name]="cameraEnabled() ? 'video' : 'video-off'" [size]="22" />
+                </button>
+              }
+              <button type="button" class="call-btn call-btn-end" (click)="hangUp()"
+                      aria-label="Hang up">
+                <app-icon name="phone-off" [size]="24" />
+              </button>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="call-audio">
+          <span class="avatar avatar-large" aria-hidden="true" [style.--avatar-hue]="hue()">
+            {{ (call()?.peerName ?? '?').charAt(0).toUpperCase() }}
+          </span>
+          <span class="call-peer">{{ call()?.peerName }}</span>
+          <span class="call-status">
+            @if (state() !== 'active') { <span class="pulse" aria-hidden="true"></span> }
+            {{ statusText() }}
+          </span>
+        </div>
+      }
+
+      <!-- Audio always plays through its own element, including during a video call
+           where the video element may be muted by the browser. -->
+      <audio #remoteAudio autoplay></audio>
+
+      <div class="call-actions">
+        @if (state() === 'ringing') {
+          <button type="button" class="call-btn call-btn-accept" (click)="accept()"
+                  aria-label="Accept call" title="Accept">
+            <app-icon name="phone-incoming" [size]="24" />
+          </button>
+          <button type="button" class="call-btn call-btn-end" (click)="reject()"
+                  aria-label="Decline call" title="Decline">
+            <app-icon name="phone-off" [size]="24" />
+          </button>
+        } @else {
+          @if (state() === 'active') {
+            <button type="button" class="call-btn call-btn-toggle" [class.off]="!micEnabled()"
+                    (click)="toggleMic()"
+                    [attr.aria-pressed]="!micEnabled()"
+                    [attr.aria-label]="micEnabled() ? 'Mute microphone' : 'Unmute microphone'"
+                    [title]="micEnabled() ? 'Mute' : 'Unmute'">
+              <app-icon [name]="micEnabled() ? 'mic' : 'mic-off'" [size]="22" />
+            </button>
+
+            @if (isVideo()) {
+              <button type="button" class="call-btn call-btn-toggle" [class.off]="!cameraEnabled()"
+                      (click)="toggleCamera()"
+                      [attr.aria-pressed]="!cameraEnabled()"
+                      [attr.aria-label]="cameraEnabled() ? 'Turn camera off' : 'Turn camera on'"
+                      [title]="cameraEnabled() ? 'Camera off' : 'Camera on'">
+                <app-icon [name]="cameraEnabled() ? 'video' : 'video-off'" [size]="22" />
+              </button>
+            }
+          }
+
+          <button type="button" class="call-btn call-btn-end" (click)="hangUp()"
+                  aria-label="Hang up" title="Hang up">
+            <app-icon name="phone-off" [size]="24" />
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
