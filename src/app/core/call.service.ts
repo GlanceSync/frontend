@@ -8,6 +8,7 @@ interface ActiveCall {
   callId: string | null;
   peerId: number;
   peerName: string;
+  peerAvatarUrl?: string;
   mode: 'audio' | 'video';
   incoming: boolean;
 }
@@ -62,12 +63,17 @@ export class CallService {
   }
 
   /** Places a call. Media is captured first so we never ring without a working device. */
-  async start(peerId: number, peerName: string, mode: 'audio' | 'video'): Promise<void> {
+  async start(
+    peerId: number,
+    peerName: string,
+    mode: 'audio' | 'video',
+    peerAvatarUrl?: string
+  ): Promise<void> {
     if (this.state() !== 'idle') {
       return;
     }
     this.error.set(null);
-    this.call.set({ callId: null, peerId, peerName, mode, incoming: false });
+    this.call.set({ callId: null, peerId, peerName, peerAvatarUrl, mode, incoming: false });
     this.state.set('calling');
 
     try {
@@ -81,8 +87,11 @@ export class CallService {
     }
   }
 
-  /** Answers the call that is currently ringing. */
-  async accept(): Promise<void> {
+  /**
+   * Answers the call that is currently ringing. A video call can be answered without
+   * our camera: we still receive their video, we just send none.
+   */
+  async accept(withVideo = true): Promise<void> {
     const current = this.call();
     if (!current?.callId || !this.pendingOffer) {
       // Nothing to answer: clear the stale dialog instead of leaving it stuck.
@@ -92,7 +101,7 @@ export class CallService {
     this.state.set('connecting');
 
     try {
-      await this.capture(current.mode);
+      await this.capture(withVideo ? current.mode : 'audio');
       const peer = this.createPeer();
       await peer.setRemoteDescription(new RTCSessionDescription(this.pendingOffer));
       await this.flushCandidates();
@@ -162,6 +171,7 @@ export class CallService {
           callId: message.callId,
           peerId: message.fromUserId,
           peerName: message.fromUsername ?? 'Someone',
+          peerAvatarUrl: message.fromAvatarUrl,
           mode: message.mode,
           incoming: true
         });

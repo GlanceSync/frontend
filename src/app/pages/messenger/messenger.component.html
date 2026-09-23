@@ -43,10 +43,9 @@
               [routerLink]="['/chat', person.id]"
               routerLinkActive="active"
             >
-              <span class="avatar" aria-hidden="true" [style.--avatar-hue]="hue(person.username)">
-                {{ initial(person.username) }}
+              <app-avatar [name]="person.username" [src]="person.avatarUrl">
                 <span class="avatar-dot" [class.dot-online]="person.online"></span>
-              </span>
+              </app-avatar>
 
               <span class="conversation-text">
                 <span class="conversation-top">

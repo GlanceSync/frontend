@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { IconComponent, IconName } from '../../shared/icon.component';
-import { avatarHue } from '../../shared/avatar-hue';
+import { AvatarComponent } from '../../shared/avatar.component';
 import { AuthService } from '../../core/auth.service';
 import { PeopleService } from '../../core/people.service';
 import { RealtimeService } from '../../core/realtime.service';
@@ -12,7 +12,7 @@ import { ChatEntry, ChatMessage, Person } from '../../core/models';
 
 @Component({
   selector: 'app-chat',
-  imports: [ReactiveFormsModule, RouterLink, IconComponent],
+  imports: [ReactiveFormsModule, RouterLink, IconComponent, AvatarComponent],
   templateUrl: './chat.component.html'
 })
 export class ChatComponent {
@@ -192,15 +192,7 @@ export class ChatComponent {
 
   startCall(mode: 'audio' | 'video'): void {
     const partner = this.partner();
-    void this.calls.start(this.otherUserId(), partner?.username ?? 'Someone', mode);
-  }
-
-  hue(): number {
-    return avatarHue(this.partner()?.username);
-  }
-
-  initial(username: string): string {
-    return (username || '?').charAt(0).toUpperCase();
+    void this.calls.start(this.otherUserId(), partner?.username ?? 'Someone', mode, partner?.avatarUrl);
   }
 
   selfId(): number | undefined {

@@ -4,9 +4,7 @@
       <app-icon name="arrow-left" [size]="18" />
     </a>
 
-    <span class="avatar avatar-small" aria-hidden="true" [style.--avatar-hue]="hue()">
-      {{ initial(partner()?.username ?? '?') }}
-    </span>
+    <app-avatar class="avatar-small" [name]="partner()?.username" [src]="partner()?.avatarUrl" />
 
     <div class="chat-who">
       <span class="chat-name">{{ partner()?.username ?? 'Conversation' }}</span>
@@ -42,9 +40,7 @@
     <div class="messages" #scroller>
       <!-- The opening of a direct message, shown above the whole history. -->
       <div class="thread-intro">
-        <span class="avatar avatar-xl" aria-hidden="true" [style.--avatar-hue]="hue()">
-          {{ initial(partner()?.username ?? '?') }}
-        </span>
+        <app-avatar class="avatar-xl" [name]="partner()?.username" [src]="partner()?.avatarUrl" />
         <h2 class="intro-name">{{ partner()?.username }}</h2>
         <p class="intro-lead">
           This is the beginning of your direct message history with

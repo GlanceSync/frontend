@@ -73,6 +73,26 @@ export class AuthService {
     }
   }
 
+  /** Replaces the profile photo with an image already cropped and sized by the caller. */
+  async uploadAvatar(image: Blob): Promise<AuthUser> {
+    const user = await firstValueFrom(
+      this.http.put<AuthUser>('/api/users/me/avatar', image, {
+        withCredentials: true,
+        headers: { 'Content-Type': image.type }
+      })
+    );
+    this.currentUser.set(user);
+    return user;
+  }
+
+  async removeAvatar(): Promise<AuthUser> {
+    const user = await firstValueFrom(
+      this.http.delete<AuthUser>('/api/users/me/avatar', { withCredentials: true })
+    );
+    this.currentUser.set(user);
+    return user;
+  }
+
   /** Turns an HTTP failure into the API's error shape, with a sane fallback. */
   static toApiError(error: unknown): ApiError {
     if (error instanceof HttpErrorResponse && error.error && typeof error.error === 'object') {

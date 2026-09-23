@@ -7,20 +7,48 @@
 }
 
 @if (state() !== 'idle') {
-  <div class="call-overlay" role="dialog" aria-modal="true" aria-label="Call">
-    <div class="call-box">
-      @if (isVideo()) {
-        <!-- #stage is what goes fullscreen: the video and everything drawn over it. -->
-        <div class="call-video" #stage [class.is-fullscreen]="isFullscreen()"
-             (dblclick)="toggleFullscreen()">
-          <video #remoteVideo class="remote-video" autoplay playsinline></video>
-          <video #localVideo class="local-video" autoplay playsinline muted></video>
+  <div class="call-overlay" role="dialog" aria-modal="true"
+       [attr.aria-label]="statusText() + ' — ' + call()?.peerName">
+    <div class="call-box" [style.--avatar-hue]="hue()">
+      <!-- #stage is what goes fullscreen: the video and everything drawn over it. -->
+      <div class="call-stage" #stage
+           [class.has-video]="isVideo() && state() !== 'ringing'"
+           [class.is-fullscreen]="isFullscreen()"
+           (dblclick)="onStageDoubleClick()">
 
-          <div class="call-caption">
+        <!-- The video elements exist as soon as we are past ringing, so the remote
+             stream can attach the moment it arrives. -->
+        @if (isVideo() && state() !== 'ringing') {
+          <video #remoteVideo class="remote-video" autoplay playsinline
+                 [class.hidden]="!showRemoteVideo()"></video>
+          @if (hasLocalVideo()) {
+            <video #localVideo class="local-video" autoplay playsinline muted
+                   [class.preview]="state() !== 'active'"
+                   [class.off]="!cameraEnabled()"></video>
+          }
+        }
+
+        <!-- Until their video is on screen, the caller's avatar is what you see. -->
+        @if (!showRemoteVideo()) {
+          <div class="call-hero">
+            <div class="call-avatar-wrap" [class.ringing]="state() !== 'active'">
+              <app-avatar class="call-avatar" [name]="call()?.peerName" [src]="call()?.peerAvatarUrl" />
+              <span class="call-mode-badge" aria-hidden="true">
+                <app-icon [name]="isVideo() ? 'video' : 'phone'" [size]="14" />
+              </span>
+            </div>
             <span class="call-peer">{{ call()?.peerName }}</span>
-            <span class="call-status">
+            <span class="call-status" aria-live="polite">
               @if (state() !== 'active') { <span class="pulse" aria-hidden="true"></span> }
               {{ statusText() }}
+            </span>
+          </div>
+        } @else {
+          <div class="call-caption">
+            <app-avatar class="avatar-small" [name]="call()?.peerName" [src]="call()?.peerAvatarUrl" />
+            <span>
+              <span class="call-peer">{{ call()?.peerName }}</span>
+              <span class="call-status">{{ statusText() }}</span>
             </span>
           </div>
 
@@ -29,42 +57,16 @@
                   [attr.aria-label]="isFullscreen() ? 'Exit full screen' : 'Enter full screen'">
             <app-icon [name]="isFullscreen() ? 'minimize' : 'maximize'" [size]="20" />
           </button>
+        }
 
-          <!-- In fullscreen the overlay's own controls are off-screen, so the stage
-               carries its own copy. -->
-          @if (isFullscreen()) {
-            <div class="call-actions call-actions-overlay">
-              @if (state() === 'active') {
-                <button type="button" class="call-btn call-btn-toggle" [class.off]="!micEnabled()"
-                        (click)="toggleMic()"
-                        [attr.aria-label]="micEnabled() ? 'Mute microphone' : 'Unmute microphone'">
-                  <app-icon [name]="micEnabled() ? 'mic' : 'mic-off'" [size]="22" />
-                </button>
-                <button type="button" class="call-btn call-btn-toggle" [class.off]="!cameraEnabled()"
-                        (click)="toggleCamera()"
-                        [attr.aria-label]="cameraEnabled() ? 'Turn camera off' : 'Turn camera on'">
-                  <app-icon [name]="cameraEnabled() ? 'video' : 'video-off'" [size]="22" />
-                </button>
-              }
-              <button type="button" class="call-btn call-btn-end" (click)="hangUp()"
-                      aria-label="Hang up">
-                <app-icon name="phone-off" [size]="24" />
-              </button>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="call-audio">
-          <span class="avatar avatar-large" aria-hidden="true" [style.--avatar-hue]="hue()">
-            {{ (call()?.peerName ?? '?').charAt(0).toUpperCase() }}
-          </span>
-          <span class="call-peer">{{ call()?.peerName }}</span>
-          <span class="call-status">
-            @if (state() !== 'active') { <span class="pulse" aria-hidden="true"></span> }
-            {{ statusText() }}
-          </span>
-        </div>
-      }
+        <!-- In fullscreen the overlay's own controls are off-screen, so the stage
+             carries its own copy. -->
+        @if (isFullscreen()) {
+          <div class="call-actions call-actions-overlay">
+            <ng-container *ngTemplateOutlet="inCallControls" />
+          </div>
+        }
+      </div>
 
       <!-- Audio always plays through its own element, including during a video call
            where the video element may be muted by the browser. -->
@@ -72,41 +74,70 @@
 
       <div class="call-actions">
         @if (state() === 'ringing') {
-          <button type="button" class="call-btn call-btn-accept" (click)="accept()"
-                  aria-label="Accept call" title="Accept">
-            <app-icon name="phone-incoming" [size]="24" />
-          </button>
-          <button type="button" class="call-btn call-btn-end" (click)="reject()"
-                  aria-label="Decline call" title="Decline">
-            <app-icon name="phone-off" [size]="24" />
-          </button>
-        } @else {
-          @if (state() === 'active') {
-            <button type="button" class="call-btn call-btn-toggle" [class.off]="!micEnabled()"
-                    (click)="toggleMic()"
-                    [attr.aria-pressed]="!micEnabled()"
-                    [attr.aria-label]="micEnabled() ? 'Mute microphone' : 'Unmute microphone'"
-                    [title]="micEnabled() ? 'Mute' : 'Unmute'">
-              <app-icon [name]="micEnabled() ? 'mic' : 'mic-off'" [size]="22" />
+          <div class="call-action">
+            <button type="button" class="call-btn call-btn-end" (click)="reject()"
+                    aria-label="Decline call">
+              <app-icon name="phone-off" [size]="24" />
             </button>
+            <span class="call-action-label">Decline</span>
+          </div>
 
-            @if (isVideo()) {
-              <button type="button" class="call-btn call-btn-toggle" [class.off]="!cameraEnabled()"
-                      (click)="toggleCamera()"
-                      [attr.aria-pressed]="!cameraEnabled()"
-                      [attr.aria-label]="cameraEnabled() ? 'Turn camera off' : 'Turn camera on'"
-                      [title]="cameraEnabled() ? 'Camera off' : 'Camera on'">
-                <app-icon [name]="cameraEnabled() ? 'video' : 'video-off'" [size]="22" />
+          @if (isVideo()) {
+            <div class="call-action">
+              <button type="button" class="call-btn call-btn-toggle" (click)="accept(false)"
+                      aria-label="Answer with audio only">
+                <app-icon name="phone" [size]="22" />
               </button>
-            }
+              <span class="call-action-label">Audio only</span>
+            </div>
           }
 
-          <button type="button" class="call-btn call-btn-end" (click)="hangUp()"
-                  aria-label="Hang up" title="Hang up">
-            <app-icon name="phone-off" [size]="24" />
-          </button>
+          <div class="call-action">
+            <button type="button" class="call-btn call-btn-accept" (click)="accept()"
+                    [attr.aria-label]="isVideo() ? 'Answer with video' : 'Answer call'">
+              <app-icon [name]="isVideo() ? 'video' : 'phone'" [size]="24" />
+            </button>
+            <span class="call-action-label">{{ isVideo() ? 'Video' : 'Answer' }}</span>
+          </div>
+        } @else {
+          <ng-container *ngTemplateOutlet="inCallControls" />
         }
       </div>
     </div>
   </div>
 }
+
+<!-- Shared by the normal controls and the copy drawn over fullscreen video. -->
+<ng-template #inCallControls>
+  @if (state() === 'active') {
+    <div class="call-action">
+      <button type="button" class="call-btn call-btn-toggle" [class.off]="!micEnabled()"
+              (click)="toggleMic()"
+              [attr.aria-pressed]="!micEnabled()"
+              [attr.aria-label]="micEnabled() ? 'Mute microphone' : 'Unmute microphone'">
+        <app-icon [name]="micEnabled() ? 'mic' : 'mic-off'" [size]="22" />
+      </button>
+      <span class="call-action-label">{{ micEnabled() ? 'Mute' : 'Unmute' }}</span>
+    </div>
+
+    @if (hasLocalVideo()) {
+      <div class="call-action">
+        <button type="button" class="call-btn call-btn-toggle" [class.off]="!cameraEnabled()"
+                (click)="toggleCamera()"
+                [attr.aria-pressed]="!cameraEnabled()"
+                [attr.aria-label]="cameraEnabled() ? 'Turn camera off' : 'Turn camera on'">
+          <app-icon [name]="cameraEnabled() ? 'video' : 'video-off'" [size]="22" />
+        </button>
+        <span class="call-action-label">{{ cameraEnabled() ? 'Camera' : 'Camera off' }}</span>
+      </div>
+    }
+  }
+
+  <div class="call-action">
+    <button type="button" class="call-btn call-btn-end" (click)="hangUp()"
+            [attr.aria-label]="state() === 'calling' ? 'Cancel call' : 'Hang up'">
+      <app-icon name="phone-off" [size]="24" />
+    </button>
+    <span class="call-action-label">{{ state() === 'calling' ? 'Cancel' : 'End' }}</span>
+  </div>
+</ng-template>

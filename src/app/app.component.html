@@ -27,10 +27,13 @@
         }
       </a>
 
-      <span class="username" [title]="connected() ? 'Connected' : 'Reconnecting…'">
-        <span class="dot" [class.dot-online]="connected()" aria-hidden="true"></span>
-        {{ user.username }}
-      </span>
+      <a routerLink="/profile" routerLinkActive="active" class="username"
+         [title]="(connected() ? 'Connected' : 'Reconnecting…') + ' · Edit profile'">
+        <app-avatar class="avatar-tiny" [name]="user.username" [src]="user.avatarUrl">
+          <span class="avatar-dot" [class.dot-online]="connected()"></span>
+        </app-avatar>
+        <span class="nav-label">{{ user.username }}</span>
+      </a>
 
       <button type="button" class="icon-button" (click)="logout()" title="Log out" aria-label="Log out">
         <app-icon name="log-out" />

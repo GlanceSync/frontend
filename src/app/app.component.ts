@@ -4,10 +4,11 @@ import { AuthService } from './core/auth.service';
 import { RealtimeService } from './core/realtime.service';
 import { CallOverlayComponent } from './pages/call/call-overlay.component';
 import { IconComponent } from './shared/icon.component';
+import { AvatarComponent } from './shared/avatar.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CallOverlayComponent, IconComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CallOverlayComponent, IconComponent, AvatarComponent],
   templateUrl: './app.component.html'
 })
 export class AppComponent {

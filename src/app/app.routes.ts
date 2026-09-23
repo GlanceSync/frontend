@@ -44,5 +44,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/events/events.component').then(m => m.EventsComponent),
     title: 'Dates · GlanceSync'
   },
+  {
+    path: 'profile',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/profile/profile.component').then(m => m.ProfileComponent),
+    title: 'Profile · GlanceSync'
+  },
   { path: '**', redirectTo: 'chat' }
 ];

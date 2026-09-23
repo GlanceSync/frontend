@@ -9,7 +9,7 @@ import { PeopleService } from '../../core/people.service';
 import { RealtimeService } from '../../core/realtime.service';
 import { Person } from '../../core/models';
 import { IconComponent } from '../../shared/icon.component';
-import { avatarHue } from '../../shared/avatar-hue';
+import { AvatarComponent } from '../../shared/avatar.component';
 
 /**
  * The messenger shell: conversations on the left, the open thread on the right.
@@ -18,7 +18,7 @@ import { avatarHue } from '../../shared/avatar-hue';
  */
 @Component({
   selector: 'app-messenger',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent, AvatarComponent],
   templateUrl: './messenger.component.html'
 })
 export class MessengerComponent {
@@ -120,14 +120,6 @@ export class MessengerComponent {
 
   onSearch(value: string): void {
     this.search.set(value);
-  }
-
-  initial(username: string): string {
-    return username.charAt(0).toUpperCase();
-  }
-
-  hue(username: string): number {
-    return avatarHue(username);
   }
 
   /** Short, list-friendly time: today shows a clock, otherwise a date. */

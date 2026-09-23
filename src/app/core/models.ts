@@ -1,12 +1,15 @@
 export interface AuthUser {
   id: number;
   username: string;
+  /** Absent until they upload a profile photo. */
+  avatarUrl?: string;
 }
 
 /** A person in the people list, as the API returns them. */
 export interface Person {
   id: number;
   username: string;
+  avatarUrl?: string;
   online: boolean;
   lastSeenAt?: string;
   /** Preview of the most recent message in this conversation, if there is one. */
@@ -77,6 +80,7 @@ export interface CallSignal {
   callId: string;
   fromUserId: number;
   fromUsername?: string;
+  fromAvatarUrl?: string;
   mode: 'audio' | 'video';
   payload?: Record<string, unknown>;
 }

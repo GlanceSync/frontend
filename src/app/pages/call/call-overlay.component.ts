@@ -1,7 +1,9 @@
-import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { CallService } from '../../core/call.service';
 import { IconComponent } from '../../shared/icon.component';
 import { avatarHue } from '../../shared/avatar-hue';
+import { AvatarComponent } from '../../shared/avatar.component';
 
 /**
  * The call UI. It lives in the app shell rather than on a page, so an incoming call
@@ -9,7 +11,7 @@ import { avatarHue } from '../../shared/avatar-hue';
  */
 @Component({
   selector: 'app-call-overlay',
-  imports: [IconComponent],
+  imports: [IconComponent, NgTemplateOutlet, AvatarComponent],
   templateUrl: './call-overlay.component.html'
 })
 export class CallOverlayComponent {
@@ -22,6 +24,25 @@ export class CallOverlayComponent {
   readonly micEnabled = this.calls.micEnabled;
   readonly cameraEnabled = this.calls.cameraEnabled;
 
+  /** Whether we are sending video. False while ringing, or after answering audio-only. */
+  readonly hasLocalVideo = computed(
+    () => (this.calls.localStream()?.getVideoTracks().length ?? 0) > 0
+  );
+
+  /**
+   * Whether their video is on screen. A video call they answered audio-only sends us
+   * no video track, and then their photo is shown instead of a black frame.
+   */
+  readonly showRemoteVideo = computed(
+    () =>
+      this.isVideo() &&
+      this.state() === 'active' &&
+      (this.calls.remoteStream()?.getVideoTracks().length ?? 0) > 0
+  );
+
+  /** Seconds since the call connected, for the timer shown in place of a status. */
+  readonly elapsed = signal(0);
+
   /** The element handed to the Fullscreen API: video plus the controls over it. */
   private readonly stage = viewChild<ElementRef<HTMLElement>>('stage');
 
@@ -33,6 +54,20 @@ export class CallOverlayComponent {
   private readonly remoteAudio = viewChild<ElementRef<HTMLAudioElement>>('remoteAudio');
 
   constructor() {
+    // The timer runs only while connected, and restarts from zero for the next call.
+    effect(onCleanup => {
+      if (this.state() !== 'active') {
+        this.elapsed.set(0);
+        return;
+      }
+      const startedAt = Date.now();
+      const timer = setInterval(
+        () => this.elapsed.set(Math.floor((Date.now() - startedAt) / 1000)),
+        1000
+      );
+      onCleanup(() => clearInterval(timer));
+    });
+
     // Escape and F11 change fullscreen without going through our button, so the
     // browser is the source of truth rather than our own flag.
     if (typeof document !== 'undefined') {
@@ -70,8 +105,8 @@ export class CallOverlayComponent {
     });
   }
 
-  accept(): void {
-    void this.calls.accept();
+  accept(withVideo = true): void {
+    void this.calls.accept(withVideo);
   }
 
   reject(): void {
@@ -98,6 +133,13 @@ export class CallOverlayComponent {
     return avatarHue(this.call()?.peerName);
   }
 
+  /** Double-click enlarges a live video call, as in any player. */
+  onStageDoubleClick(): void {
+    if (this.isVideo() && this.state() === 'active') {
+      void this.toggleFullscreen();
+    }
+  }
+
   /** Fullscreen is only meaningful for video; an audio call has nothing to enlarge. */
   async toggleFullscreen(): Promise<void> {
     const element = this.stage()?.nativeElement;
@@ -116,6 +158,17 @@ export class CallOverlayComponent {
     }
   }
 
+  /** m:ss, or h:mm:ss once a call passes the hour. */
+  duration(): string {
+    const total = this.elapsed();
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = String(total % 60).padStart(2, '0');
+    return hours > 0
+      ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}`
+      : `${minutes}:${seconds}`;
+  }
+
   statusText(): string {
     switch (this.state()) {
       case 'calling':
@@ -125,7 +178,7 @@ export class CallOverlayComponent {
       case 'connecting':
         return 'Connecting…';
       case 'active':
-        return 'Connected';
+        return this.duration();
       default:
         return '';
     }
