@@ -35,6 +35,9 @@ export class CallService {
   readonly micEnabled = signal(true);
   readonly cameraEnabled = signal(true);
 
+  /** Something the user should know about their own devices, shown during the call. */
+  readonly notice = signal<string | null>(null);
+
   readonly isVideo = computed(() => this.call()?.mode === 'video');
 
   private peer: RTCPeerConnection | null = null;
@@ -85,6 +88,7 @@ export class CallService {
     try {
       const [iceServers] = await Promise.all([this.loadIceServers(), this.capture(mode)]);
       const peer = this.createPeer(iceServers);
+      this.receiveWhatWeCannotSend(peer, mode);
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       this.realtime.offerCall(peerId, mode, { type: offer.type, sdp: offer.sdp });
@@ -269,19 +273,93 @@ export class CallService {
     return peer;
   }
 
+  /**
+   * Gets the microphone and, for video, the camera. Asking for both at once fails when
+   * either is missing or busy (a MacBook with its lid closed, a camera held by another
+   * app), so the call steps down instead: without a camera, audio only; without a
+   * microphone, video only; with neither, the user can still see and hear the other side.
+   * Only a refused permission stops the call, since asking again would not help.
+   */
   private async capture(mode: 'audio' | 'video'): Promise<void> {
     // Browsers only expose mediaDevices in a secure context: https, or localhost.
     // Reaching the app over a plain-http LAN address leaves it undefined.
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error('insecure-context');
     }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: mode === 'video'
-    });
+
+    const attempts: MediaStreamConstraints[] =
+      mode === 'video'
+        ? [{ audio: true, video: true }, { audio: true }, { video: true }]
+        : [{ audio: true }];
+
+    let firstFailure: string | undefined;
+    let stream: MediaStream | null = null;
+    for (const constraints of attempts) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        break;
+      } catch (error) {
+        const name = (error as { name?: string })?.name ?? '';
+        if (!CallService.MISSING_DEVICE_ERRORS.has(name)) {
+          throw error;
+        }
+        firstFailure ??= name;
+      }
+    }
+
+    const hasAudio = (stream?.getAudioTracks().length ?? 0) > 0;
+    const hasVideo = (stream?.getVideoTracks().length ?? 0) > 0;
     this.localStream.set(stream);
-    this.micEnabled.set(true);
-    this.cameraEnabled.set(mode === 'video');
+    this.micEnabled.set(hasAudio);
+    this.cameraEnabled.set(hasVideo);
+    this.notice.set(this.deviceNotice(mode, hasAudio, hasVideo, firstFailure));
+  }
+
+  /** Errors that mean "this device is missing or unusable", as opposed to "not allowed". */
+  private static readonly MISSING_DEVICE_ERRORS = new Set([
+    'NotFoundError',
+    'NotReadableError',
+    'OverconstrainedError',
+    'AbortError'
+  ]);
+
+  private deviceNotice(
+    mode: 'audio' | 'video',
+    hasAudio: boolean,
+    hasVideo: boolean,
+    failure: string | undefined
+  ): string | null {
+    const busy = failure === 'NotReadableError';
+    if (mode === 'video' && hasAudio && !hasVideo) {
+      return busy
+        ? 'Your camera is being used by another app, so you joined with audio only.'
+        : 'No camera was found, so you joined with audio only.';
+    }
+    if (!hasAudio && hasVideo) {
+      return busy
+        ? 'Your microphone is being used by another app. They can see you but not hear you.'
+        : 'No microphone was found. They can see you but not hear you.';
+    }
+    if (!hasAudio && !hasVideo) {
+      return busy
+        ? 'Your microphone and camera are being used by another app. You can see and hear them, but they cannot see or hear you.'
+        : 'No microphone or camera was found. You can see and hear them, but they cannot see or hear you.';
+    }
+    return null;
+  }
+
+  /**
+   * An offer only describes media we send, so a caller without a camera must still ask
+   * for the other side's video (and likewise audio), or the callee could not send theirs.
+   */
+  private receiveWhatWeCannotSend(peer: RTCPeerConnection, mode: 'audio' | 'video'): void {
+    const stream = this.localStream();
+    if (!stream?.getAudioTracks().length) {
+      peer.addTransceiver('audio', { direction: 'recvonly' });
+    }
+    if (mode === 'video' && !stream?.getVideoTracks().length) {
+      peer.addTransceiver('video', { direction: 'recvonly' });
+    }
   }
 
   private flushOutgoingCandidates(callId: string): void {
@@ -311,6 +389,7 @@ export class CallService {
     this.outgoingCandidates = [];
     this.pendingOffer = null;
     this.localStream.set(null);
+    this.notice.set(null);
     this.remoteStream.set(null);
     this.call.set(null);
     this.state.set('idle');
@@ -342,10 +421,14 @@ export class CallService {
     }
     const name = (error as { name?: string })?.name;
     if (name === 'NotAllowedError') {
-      return 'Permission to use the microphone or camera was denied.';
+      // Chrome says "by system" when the OS, not the site settings, is blocking it.
+      if (/system/i.test((error as Error)?.message ?? '')) {
+        return 'Your computer is blocking the browser from using the microphone and camera. On a Mac, allow it in System Settings → Privacy & Security → Camera and Microphone, then restart the browser.';
+      }
+      return 'Permission to use the microphone or camera was denied. Allow it from the lock icon next to the address bar, then try again.';
     }
-    if (name === 'NotFoundError') {
-      return 'No microphone or camera was found.';
+    if (name === 'SecurityError') {
+      return 'The browser blocked access to the microphone and camera on this page.';
     }
     return 'Could not start the call.';
   }

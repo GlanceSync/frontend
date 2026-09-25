@@ -68,6 +68,14 @@
         }
       </div>
 
+      <!-- What happened with our own devices, e.g. joined audio-only for lack of a camera. -->
+      @if (notice(); as text) {
+        <p class="call-notice" role="status">
+          <app-icon name="video-off" [size]="16" />
+          <span>{{ text }}</span>
+        </p>
+      }
+
       <!-- Audio always plays through its own element, including during a video call
            where the video element may be muted by the browser. -->
       <audio #remoteAudio autoplay></audio>
@@ -109,7 +117,7 @@
 
 <!-- Shared by the normal controls and the copy drawn over fullscreen video. -->
 <ng-template #inCallControls>
-  @if (state() === 'active') {
+  @if (state() === 'active' && hasLocalAudio()) {
     <div class="call-action">
       <button type="button" class="call-btn call-btn-toggle" [class.off]="!micEnabled()"
               (click)="toggleMic()"
@@ -119,7 +127,9 @@
       </button>
       <span class="call-action-label">{{ micEnabled() ? 'Mute' : 'Unmute' }}</span>
     </div>
+  }
 
+  @if (state() === 'active') {
     @if (hasLocalVideo()) {
       <div class="call-action">
         <button type="button" class="call-btn call-btn-toggle" [class.off]="!cameraEnabled()"

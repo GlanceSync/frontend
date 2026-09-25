@@ -25,6 +25,13 @@ export class CallOverlayComponent {
   readonly cameraEnabled = this.calls.cameraEnabled;
 
   /** Whether we are sending video. False while ringing, or after answering audio-only. */
+  readonly notice = this.calls.notice;
+
+  /** False when no microphone could be opened, so there is nothing to mute. */
+  readonly hasLocalAudio = computed(
+    () => (this.calls.localStream()?.getAudioTracks().length ?? 0) > 0
+  );
+
   readonly hasLocalVideo = computed(
     () => (this.calls.localStream()?.getVideoTracks().length ?? 0) > 0
   );
