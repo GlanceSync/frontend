@@ -1,6 +1,11 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { RealtimeService } from './realtime.service';
 import { CallSignal } from './models';
+
+/** Used when the server cannot be asked; enough for calls on the same network. */
+const FALLBACK_ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 export type CallState = 'idle' | 'calling' | 'ringing' | 'connecting' | 'active';
 
@@ -20,6 +25,7 @@ interface ActiveCall {
 @Injectable({ providedIn: 'root' })
 export class CallService {
   private readonly realtime = inject(RealtimeService);
+  private readonly http = inject(HttpClient);
 
   readonly state = signal<CallState>('idle');
   readonly call = signal<ActiveCall | null>(null);
@@ -77,8 +83,8 @@ export class CallService {
     this.state.set('calling');
 
     try {
-      await this.capture(mode);
-      const peer = this.createPeer();
+      const [iceServers] = await Promise.all([this.loadIceServers(), this.capture(mode)]);
+      const peer = this.createPeer(iceServers);
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       this.realtime.offerCall(peerId, mode, { type: offer.type, sdp: offer.sdp });
@@ -101,8 +107,11 @@ export class CallService {
     this.state.set('connecting');
 
     try {
-      await this.capture(withVideo ? current.mode : 'audio');
-      const peer = this.createPeer();
+      const [iceServers] = await Promise.all([
+        this.loadIceServers(),
+        this.capture(withVideo ? current.mode : 'audio')
+      ]);
+      const peer = this.createPeer(iceServers);
       await peer.setRemoteDescription(new RTCSessionDescription(this.pendingOffer));
       await this.flushCandidates();
 
@@ -204,12 +213,27 @@ export class CallService {
     }
   }
 
-  private createPeer(): RTCPeerConnection {
-    const peer = new RTCPeerConnection({
-      // A public STUN server is enough for the same machine or the same network.
-      // Calls between two restrictive NATs would additionally need a TURN relay.
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
+  /**
+   * STUN finds a direct path; TURN relays the media when the two networks cannot reach
+   * each other (mobile data, hotspots, strict NATs). TURN credentials are short-lived,
+   * so they are fetched fresh for every call rather than cached.
+   */
+  private async loadIceServers(): Promise<RTCIceServer[]> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<{ iceServers: RTCIceServer[] }>('/api/calls/ice-servers', {
+          withCredentials: true
+        })
+      );
+      return response.iceServers?.length ? response.iceServers : FALLBACK_ICE_SERVERS;
+    } catch {
+      // A call without a relay may still connect, so this is not worth failing over.
+      return FALLBACK_ICE_SERVERS;
+    }
+  }
+
+  private createPeer(iceServers: RTCIceServer[]): RTCPeerConnection {
+    const peer = new RTCPeerConnection({ iceServers });
 
     for (const track of this.localStream()?.getTracks() ?? []) {
       peer.addTrack(track, this.localStream()!);
