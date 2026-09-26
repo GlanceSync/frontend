@@ -1,0 +1,120 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ feat/realtime-messaging ]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      REMOTE_DIR: /home/${{ secrets.SSH_USERNAME }}/glancesync-frontend
+      APP_PORT: 4000
+      PM2_NAME: glancesync-frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # The npm cache restored by setup-node can come back corrupted (rename EEXIST
+      # on _cacache): start from a clean cache rather than failing the deploy.
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund || (npm cache clean --force && npm ci --no-audit --no-fund)
+
+      - name: Build Angular app (browser + SSR server)
+        run: npm run build
+
+      - name: Assemble artifact
+        run: |
+          # The SSR bundle is self-contained: it needs no node_modules at runtime,
+          # only the browser assets sitting beside it.
+          test -f dist/glance-sync/server/server.mjs
+          tar -czf frontend.tar.gz -C dist/glance-sync .
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Trust remote host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload artifact to server
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          sshpass -e scp frontend.tar.gz "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/tmp/frontend.tar.gz"
+
+      - name: Deploy on server
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          sshpass -e ssh "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" "
+            set -e
+
+            rm -rf ${{ env.REMOTE_DIR }}-new
+            mkdir -p ${{ env.REMOTE_DIR }}-new
+            tar -xzf /tmp/frontend.tar.gz -C ${{ env.REMOTE_DIR }}-new
+            rm -f /tmp/frontend.tar.gz
+
+            rm -rf ${{ env.REMOTE_DIR }}-old
+            if [ -d ${{ env.REMOTE_DIR }} ]; then
+              mv ${{ env.REMOTE_DIR }} ${{ env.REMOTE_DIR }}-old
+            fi
+            mv ${{ env.REMOTE_DIR }}-new ${{ env.REMOTE_DIR }}
+
+            # NG_ALLOWED_HOSTS is required in production: Angular's SSR server rejects
+            # any Host header it does not recognise. It takes hostnames without a port.
+            export PORT=${{ env.APP_PORT }}
+            export NG_ALLOWED_HOSTS='${{ secrets.APP_HOST }}'
+            # pm2 runs the script through a wrapper, so Angular's isMainModule() check
+            # is false and the server would never call listen(). This says otherwise.
+            export SSR_LISTEN=1
+
+            pm2 restart ${{ env.PM2_NAME }} --update-env \
+              || pm2 start ${{ env.REMOTE_DIR }}/server/server.mjs --name ${{ env.PM2_NAME }}
+
+            # Give it a few attempts: a cold start is slower than a restart.
+            ok=0
+            for i in \$(seq 1 10); do
+              sleep 2
+              if curl -sf -o /dev/null -H 'Host: ${{ secrets.APP_HOST }}' http://localhost:${{ env.APP_PORT }}/login; then
+                ok=1; break
+              fi
+            done
+
+            if [ "\$ok" = 1 ]; then
+              echo '${{ env.PM2_NAME }} (port ${{ env.APP_PORT }}): health check passed'
+              rm -rf ${{ env.REMOTE_DIR }}-old
+              pm2 flush ${{ env.PM2_NAME }}
+              pm2 save
+            else
+              echo '${{ env.PM2_NAME }}: health check FAILED'
+              echo '--- pm2 log tail ---'
+              tail -30 ~/.pm2/logs/${{ env.PM2_NAME }}-error.log 2>/dev/null || true
+              tail -30 ~/.pm2/logs/${{ env.PM2_NAME }}-out.log 2>/dev/null || true
+              echo '--------------------'
+
+              if [ -d ${{ env.REMOTE_DIR }}-old ]; then
+                echo 'rolling back to the previous release'
+                rm -rf ${{ env.REMOTE_DIR }}
+                mv ${{ env.REMOTE_DIR }}-old ${{ env.REMOTE_DIR }}
+                pm2 restart ${{ env.PM2_NAME }} --update-env
+              else
+                # First deploy: there is nothing to roll back to. Leave the files in
+                # place so the failure can be investigated, and stop the dead process.
+                echo 'no previous release to roll back to; leaving files for inspection'
+                pm2 stop ${{ env.PM2_NAME }} || true
+              fi
+              exit 1
+            fi
+          "

@@ -1,0 +1,86 @@
+<!-- data-thread-open drives the mobile layout: one pane at a time on a phone,
+     both side by side on a wider screen. -->
+<section class="messenger" [attr.data-thread-open]="threadOpen()">
+  <aside class="conversations">
+    <header class="conversations-head">
+      <div class="conversations-title">
+        <h1>Chats</h1>
+        <span class="live-state" [class.live]="connected()">
+          {{ connected() ? onlineCount() + ' online' : 'Connecting…' }}
+        </span>
+      </div>
+
+      <label class="search" for="conversation-search">
+        <app-icon name="users" [size]="16" />
+        <input
+          id="conversation-search"
+          type="search"
+          placeholder="Search people"
+          autocomplete="off"
+          [value]="search()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </label>
+    </header>
+
+    @if (loading()) {
+      <p class="placeholder">Loading…</p>
+    } @else if (error()) {
+      <div class="conversations-empty">
+        <p class="alert" role="alert">{{ error() }}</p>
+        <button type="button" class="ghost-button" (click)="load()">Try again</button>
+      </div>
+    } @else if (conversations().length === 0) {
+      <p class="placeholder">
+        {{ search() ? 'Nobody matches that search.' : 'Nobody else has signed up yet.' }}
+      </p>
+    } @else {
+      <ul class="conversation-list">
+        @for (person of conversations(); track person.id) {
+          <li>
+            <a
+              class="conversation"
+              [routerLink]="['/chat', person.id]"
+              routerLinkActive="active"
+            >
+              <app-avatar [name]="person.username" [src]="person.avatarUrl">
+                <span class="avatar-dot" [class.dot-online]="person.online"></span>
+              </app-avatar>
+
+              <span class="conversation-text">
+                <span class="conversation-top">
+                  <span class="conversation-name">{{ person.username }}</span>
+                  <span class="conversation-time">{{ whenLabel(person.lastMessageAt) }}</span>
+                </span>
+                <span class="conversation-bottom">
+                  <span class="conversation-preview" [class.muted]="!person.lastMessage">
+                    {{ previewText(person) }}
+                  </span>
+                  @if (person.unread > 0) {
+                    <span class="badge" [attr.aria-label]="person.unread + ' unread'">
+                      {{ person.unread }}
+                    </span>
+                  }
+                </span>
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </aside>
+
+  <div class="thread">
+    <router-outlet />
+
+    @if (!threadOpen()) {
+      <div class="thread-empty">
+        <span class="thread-empty-icon" aria-hidden="true">
+          <app-icon name="message" [size]="28" />
+        </span>
+        <p class="thread-empty-title">Your messages</p>
+        <p class="placeholder">Pick someone on the left to start talking.</p>
+      </div>
+    }
+  </div>
+</section>

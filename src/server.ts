@@ -50,10 +50,15 @@ app.use('/**', (req, res, next) => {
 });
 
 /**
- * Start the server if this module is the main entry point.
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
+ * Start the server when this module is the entry point.
+ *
+ * Process managers such as pm2 launch the script through their own wrapper, so
+ * `isMainModule` is false even though this really is the entry point and the server
+ * would silently never listen. SSR_LISTEN=1 says "you are the server" explicitly.
+ * The Angular dev server imports this module for `reqHandler` and must not listen,
+ * which is why this is opt-in rather than unconditional.
  */
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) || process.env['SSR_LISTEN'] === '1') {
   const port = process.env['PORT'] || 4000;
   app.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);
