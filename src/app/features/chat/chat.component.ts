@@ -97,7 +97,7 @@ export class ChatComponent {
     // Reloads whenever the route id changes, so navigating between threads works.
     effect(() => {
       const otherUserId = this.otherUserId();
-      if (Number.isFinite(otherUserId)) {
+      if (otherUserId) {
         void this.load(otherUserId);
       }
     });
