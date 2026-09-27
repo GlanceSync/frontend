@@ -1,18 +1,19 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/auth.guard';
+import { authGuard } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'chat' },
   {
     path: 'login',
     canActivate: [guestGuard],
-    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent),
+    loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent),
     title: 'Sign in · GlanceSync'
   },
   {
     path: 'register',
     canActivate: [guestGuard],
-    loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent),
+    loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent),
     title: 'Create account · GlanceSync'
   },
   // The conversation list is the shell; a thread is a child of it, so the list stays
@@ -21,12 +22,12 @@ export const routes: Routes = [
     path: 'chat',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/messenger/messenger.component').then(m => m.MessengerComponent),
+      import('./features/messenger/messenger.component').then(m => m.MessengerComponent),
     title: 'Chats · GlanceSync',
     children: [
       {
         path: ':id',
-        loadComponent: () => import('./pages/chat/chat.component').then(m => m.ChatComponent)
+        loadComponent: () => import('./features/chat/chat.component').then(m => m.ChatComponent)
       }
     ]
   },
@@ -35,19 +36,19 @@ export const routes: Routes = [
     path: 'notifications',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/notifications/notifications.component').then(m => m.NotificationsComponent),
+      import('./features/notifications/notifications.component').then(m => m.NotificationsComponent),
     title: 'Notifications · GlanceSync'
   },
   {
     path: 'events',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/events/events.component').then(m => m.EventsComponent),
+    loadComponent: () => import('./features/events/events.component').then(m => m.EventsComponent),
     title: 'Dates · GlanceSync'
   },
   {
     path: 'profile',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/profile/profile.component').then(m => m.ProfileComponent),
+    loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent),
     title: 'Profile · GlanceSync'
   },
   { path: '**', redirectTo: 'chat' }

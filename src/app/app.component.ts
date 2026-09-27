@@ -1,10 +1,10 @@
 import { Component, effect, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService } from './core/auth.service';
-import { RealtimeService } from './core/realtime.service';
-import { CallOverlayComponent } from './pages/call/call-overlay.component';
-import { IconComponent } from './shared/icon.component';
-import { AvatarComponent } from './shared/avatar.component';
+import { AuthService } from './core/services/auth/auth.service';
+import { RealtimeService } from './core/services/realtime/realtime.service';
+import { CallOverlayComponent } from './features/call/call-overlay/call-overlay.component';
+import { IconComponent } from './shared/components/icon/icon.component';
+import { AvatarComponent } from './shared/components/avatar/avatar.component';
 
 @Component({
   selector: 'app-root',
