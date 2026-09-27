@@ -195,11 +195,13 @@ export class CallService {
         if (!this.peer) {
           return;
         }
+        // Set before awaiting: ontrack and 'connected' can fire during these awaits,
+        // and must be free to move the state on to 'active'.
+        this.state.set('connecting');
         await this.peer.setRemoteDescription(
           new RTCSessionDescription(message.payload as unknown as RTCSessionDescriptionInit)
         );
         await this.flushCandidates();
-        this.state.set('connecting');
         break;
       }
       case 'call:ice': {
