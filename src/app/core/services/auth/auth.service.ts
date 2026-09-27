@@ -4,82 +4,97 @@ import { isPlatformBrowser } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../../shared/interfaces/ApiError';
 import { AuthUser } from '../../interfaces/auth/AuthUser';
-import { SessionResponse } from '../../interfaces/auth/SessionResponse';
+import { AuthResponse } from '../../interfaces/auth/AuthResponse';
+import { RegisterRequest } from '../../interfaces/auth/RegisterRequest';
+
+const EXPIRY_MARGIN_MS = 30_000;
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
 
-  /** The signed-in user, or null when signed out. Read by the header and the guards. */
   readonly currentUser = signal<AuthUser | null>(null);
 
-  /** True once we have asked the server who we are, so we only ask once per page load. */
+  private accessToken: string | null = null;
+  private accessTokenExpiresAt = 0;
+
   private resolved = false;
+
+  private refreshing: Promise<string | null> | null = null;
 
   readonly isBrowser = isPlatformBrowser(this.platformId);
 
-  /**
-   * The session cookie lives in the browser, so asking "who am I" only makes sense there.
-   * During server rendering we report "signed out" and let hydration settle it.
-   */
+  token(): string | null {
+    return this.accessToken;
+  }
+
   async ensureResolved(): Promise<AuthUser | null> {
     if (!this.isBrowser) {
       return null;
     }
-    if (this.resolved) {
-      return this.currentUser();
+    if (!this.resolved) {
+      await this.refresh();
+      this.resolved = true;
     }
-    try {
-      const session = await firstValueFrom(
-        this.http.get<SessionResponse>('/api/auth/me', { withCredentials: true })
-      );
-      // The server omits the field entirely when signed out, so normalise to null.
-      this.currentUser.set(session.user ?? null);
-    } catch {
-      // Only a transport failure lands here; being signed out is a normal 200.
-      this.currentUser.set(null);
-    }
-    this.resolved = true;
     return this.currentUser();
   }
 
-  async register(username: string, password: string, confirmPassword: string): Promise<void> {
-    await firstValueFrom(
-      this.http.post<AuthUser>(
-        '/api/auth/register',
-        { username, password, confirmPassword },
-        { withCredentials: true }
-      )
-    );
+  async freshToken(): Promise<string | null> {
+    if (this.accessToken && Date.now() < this.accessTokenExpiresAt - EXPIRY_MARGIN_MS) {
+      return this.accessToken;
+    }
+    return this.refresh();
+  }
+
+  refresh(): Promise<string | null> {
+    this.refreshing ??= firstValueFrom(
+      this.http.post<AuthResponse>('/api/auth/refresh', {}, { withCredentials: true })
+    )
+      .then(response => {
+        this.acceptTokens(response);
+        return response.accessToken;
+      })
+      .catch(() => {
+        this.clearSession();
+        return null;
+      })
+      .finally(() => {
+        this.refreshing = null;
+      });
+    return this.refreshing;
+  }
+
+  async register(request: RegisterRequest): Promise<void> {
+    await firstValueFrom(this.http.post<AuthUser>('/api/auth/register', request));
   }
 
   async login(username: string, password: string): Promise<AuthUser> {
-    const user = await firstValueFrom(
-      this.http.post<AuthUser>('/api/auth/login', { username, password }, { withCredentials: true })
+    const response = await firstValueFrom(
+      this.http.post<AuthResponse>('/api/auth/login', { username, password }, { withCredentials: true })
     );
-    this.currentUser.set(user);
+    this.acceptTokens(response);
     this.resolved = true;
-    return user;
+    return response.user;
+  }
+
+  async resendVerification(email: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/auth/resend-verification', { email }));
   }
 
   async logout(): Promise<void> {
     try {
-      await firstValueFrom(
-        this.http.post('/api/auth/logout', {}, { withCredentials: true })
-      );
+      await firstValueFrom(this.http.post('/api/auth/logout', {}, { withCredentials: true }));
     } finally {
       // Whatever the server said, this browser is done with the session.
-      this.currentUser.set(null);
+      this.clearSession();
       this.resolved = true;
     }
   }
 
-  /** Replaces the profile photo with an image already cropped and sized by the caller. */
   async uploadAvatar(image: Blob): Promise<AuthUser> {
     const user = await firstValueFrom(
       this.http.put<AuthUser>('/api/users/me/avatar', image, {
-        withCredentials: true,
         headers: { 'Content-Type': image.type }
       })
     );
@@ -88,14 +103,23 @@ export class AuthService {
   }
 
   async removeAvatar(): Promise<AuthUser> {
-    const user = await firstValueFrom(
-      this.http.delete<AuthUser>('/api/users/me/avatar', { withCredentials: true })
-    );
+    const user = await firstValueFrom(this.http.delete<AuthUser>('/api/users/me/avatar'));
     this.currentUser.set(user);
     return user;
   }
 
-  /** Turns an HTTP failure into the API's error shape, with a sane fallback. */
+  private acceptTokens(response: AuthResponse): void {
+    this.accessToken = response.accessToken;
+    this.accessTokenExpiresAt = Date.now() + response.expiresIn * 1000;
+    this.currentUser.set(response.user);
+  }
+
+  private clearSession(): void {
+    this.accessToken = null;
+    this.accessTokenExpiresAt = 0;
+    this.currentUser.set(null);
+  }
+
   static toApiError(error: unknown): ApiError {
     if (error instanceof HttpErrorResponse && error.error && typeof error.error === 'object') {
       const body = error.error as ApiError;

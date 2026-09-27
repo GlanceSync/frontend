@@ -5,6 +5,7 @@ import { AppNotification } from '../../interfaces/notification/AppNotification';
 import { CallSignal } from '../../interfaces/call/CallSignal';
 import { ChatEntry } from '../../interfaces/chat/ChatEntry';
 import { ChatMessage } from '../../interfaces/chat/ChatMessage';
+import { AuthService } from '../auth/auth.service';
 
 /** Every server push shares this envelope; `type` decides how to read the rest. */
 interface RealtimeMessage {
@@ -13,11 +14,11 @@ interface RealtimeMessage {
 }
 
 interface PresenceInit extends RealtimeMessage {
-  onlineUserIds: number[];
+  onlineUserIds: string[];
 }
 
 interface PresenceChanged extends RealtimeMessage {
-  userId: number;
+  userId: string;
   online: boolean;
   lastSeenAt?: string;
 }
@@ -32,7 +33,7 @@ interface ChatUnreadEvent extends RealtimeMessage {
 }
 
 interface ChatReadEvent extends RealtimeMessage {
-  byUserId: number;
+  byUserId: string;
 }
 
 /**
@@ -45,18 +46,19 @@ interface ChatReadEvent extends RealtimeMessage {
 @Injectable({ providedIn: 'root' })
 export class RealtimeService {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly auth = inject(AuthService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   /** Who is currently online. Authoritative only while `connected()` is true. */
-  readonly onlineUserIds = signal<ReadonlySet<number>>(new Set());
+  readonly onlineUserIds = signal<ReadonlySet<string>>(new Set());
   readonly connected = signal(false);
 
   /** When each user was last seen, learned from disconnect events. */
-  readonly lastSeenAt = signal<ReadonlyMap<number, string>>(new Map());
+  readonly lastSeenAt = signal<ReadonlyMap<string, string>>(new Map());
 
   /** Unread totals, kept current by the server so the header badge is always right. */
   readonly unreadTotal = signal(0);
-  readonly unreadByUser = signal<ReadonlyMap<number, number>>(new Map());
+  readonly unreadByUser = signal<ReadonlyMap<string, number>>(new Map());
 
   // Events are streams, not state. A signal only ever holds its latest value and
   // effects are flushed asynchronously, so several messages arriving in one tick
@@ -70,9 +72,9 @@ export class RealtimeService {
   /** A finished call, to append to an open conversation. */
   readonly chatCalls: Observable<ChatEntry> = this.chatCalls$.asObservable();
 
-  private readonly readReceipts$ = new Subject<number>();
+  private readonly readReceipts$ = new Subject<string>();
   /** Emits the id of a user who just read our messages. */
-  readonly readReceipts: Observable<number> = this.readReceipts$.asObservable();
+  readonly readReceipts: Observable<string> = this.readReceipts$.asObservable();
 
   /** The most recent rejection from the server, for the composer to show. */
   readonly lastError = signal<string | null>(null);
@@ -100,6 +102,7 @@ export class RealtimeService {
   private reconnectDelayMs = 1000;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private recoveryBound = false;
+  private opening: Promise<void> | null = null;
 
   connect(): void {
     if (!this.isBrowser) {
@@ -108,7 +111,7 @@ export class RealtimeService {
     this.wantConnection = true;
 
     // A socket that is open or still opening is fine; anything else is replaced.
-    if (this.socket && this.socket.readyState <= WebSocket.OPEN) {
+    if (this.opening || (this.socket && this.socket.readyState <= WebSocket.OPEN)) {
       return;
     }
 
@@ -156,7 +159,7 @@ export class RealtimeService {
   }
 
   /** Starts ringing someone. The server assigns the call id and replies with it. */
-  offerCall(targetUserId: number, mode: 'audio' | 'video', payload: unknown): boolean {
+  offerCall(targetUserId: string, mode: 'audio' | 'video', payload: unknown): boolean {
     return this.send({ type: 'call:offer', targetUserId, mode, payload });
   }
 
@@ -177,12 +180,12 @@ export class RealtimeService {
   }
 
   /** Sends a chat message. Returns false when the socket is not open. */
-  sendChat(recipientId: number, body: string): boolean {
+  sendChat(recipientId: string, body: string): boolean {
     return this.send({ type: 'chat:send', recipientId, body });
   }
 
   /** Marks the conversation with this person as read. */
-  markRead(withUserId: number): boolean {
+  markRead(withUserId: string): boolean {
     return this.send({ type: 'chat:read', withUserId });
   }
 
@@ -195,9 +198,26 @@ export class RealtimeService {
   }
 
   private open(): void {
+    // Claim the slot synchronously so a second connect() during the token fetch is a no-op.
+    this.opening ??= this.openWithFreshToken().finally(() => {
+      this.opening = null;
+    });
+  }
+
+  /**
+   * The browser WebSocket API cannot set headers, so the access token goes in the query
+   * string. It is checked only at the handshake, and fetched fresh for every attempt so
+   * a reconnect after a long sleep does not present an expired one.
+   */
+  private async openWithFreshToken(): Promise<void> {
+    const token = await this.auth.freshToken();
+    if (!token || !this.wantConnection) {
+      // Signed out meanwhile; the session is over and there is nothing to connect as.
+      return;
+    }
+
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-    // Same origin, so the session cookie rides the handshake automatically.
-    const socket = new WebSocket(`${scheme}://${location.host}/ws`);
+    const socket = new WebSocket(`${scheme}://${location.host}/ws?token=${encodeURIComponent(token)}`);
     this.socket = socket;
 
     socket.onopen = () => {
@@ -275,9 +295,9 @@ export class RealtimeService {
       case 'chat:unread': {
         const event = message as ChatUnreadEvent;
         this.unreadTotal.set(event.total ?? 0);
-        const byUser = new Map<number, number>();
+        const byUser = new Map<string, number>();
         for (const [userId, count] of Object.entries(event.byUser ?? {})) {
-          byUser.set(Number(userId), count);
+          byUser.set(userId, count);
         }
         this.unreadByUser.set(byUser);
         break;

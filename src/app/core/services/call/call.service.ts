@@ -11,7 +11,7 @@ export type CallState = 'idle' | 'calling' | 'ringing' | 'connecting' | 'active'
 
 interface ActiveCall {
   callId: string | null;
-  peerId: number;
+  peerId: string;
   peerName: string;
   peerAvatarUrl?: string;
   mode: 'audio' | 'video';
@@ -73,7 +73,7 @@ export class CallService {
 
   /** Places a call. Media is captured first so we never ring without a working device. */
   async start(
-    peerId: number,
+    peerId: string,
     peerName: string,
     mode: 'audio' | 'video',
     peerAvatarUrl?: string
@@ -225,9 +225,7 @@ export class CallService {
   private async loadIceServers(): Promise<RTCIceServer[]> {
     try {
       const response = await firstValueFrom(
-        this.http.get<{ iceServers: RTCIceServer[] }>('/api/calls/ice-servers', {
-          withCredentials: true
-        })
+        this.http.get<{ iceServers: RTCIceServer[] }>('/api/calls/ice-servers')
       );
       return response.iceServers?.length ? response.iceServers : FALLBACK_ICE_SERVERS;
     } catch {

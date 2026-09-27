@@ -31,8 +31,11 @@ export class RegisterComponent {
 
   readonly form = this.fb.nonNullable.group(
     {
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
       username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(30),
         Validators.pattern(/^[A-Za-z0-9_]+$/)]],
+      firstName: ['', [Validators.required, Validators.maxLength(50)]],
+      lastName: ['', [Validators.required, Validators.maxLength(50)]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]]
     },
@@ -54,8 +57,7 @@ export class RegisterComponent {
 
     this.submitting.set(true);
     try {
-      const { username, password, confirmPassword } = this.form.getRawValue();
-      await this.auth.register(username, password, confirmPassword);
+      await this.auth.register(this.form.getRawValue());
       await this.router.navigate(['/login'], { queryParams: { registered: '1' } });
     } catch (error) {
       const apiError = AuthService.toApiError(error);

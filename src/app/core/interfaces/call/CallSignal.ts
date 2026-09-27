@@ -2,7 +2,7 @@
 export interface CallSignal {
   type: string;
   callId: string;
-  fromUserId: number;
+  fromUserId: string;
   fromUsername?: string;
   fromAvatarUrl?: string;
   mode: 'audio' | 'video';

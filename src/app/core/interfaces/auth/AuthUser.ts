@@ -1,6 +1,5 @@
 export interface AuthUser {
-  id: number;
+  id: string;
   username: string;
-  /** Absent until they upload a profile photo. */
   avatarUrl?: string;
 }

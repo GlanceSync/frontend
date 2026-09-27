@@ -1,9 +1,9 @@
 /** A proposed real-life meeting. */
 export interface DateEvent {
-  id: number;
-  organizerId: number;
+  id: string;
+  organizerId: string;
   organizerUsername: string;
-  inviteeId: number;
+  inviteeId: string;
   inviteeUsername: string;
   title: string;
   location?: string;

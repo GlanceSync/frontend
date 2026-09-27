@@ -12,58 +12,58 @@ export class PeopleService {
 
   /** Everyone but you, with presence as it stood when the request was served. */
   list(): Promise<Person[]> {
-    return firstValueFrom(this.http.get<Person[]>('/api/users', { withCredentials: true }));
+    return firstValueFrom(this.http.get<Person[]>('/api/users'));
   }
 
   /** Stored history for one conversation — messages and calls — oldest first. */
-  conversation(otherUserId: number): Promise<ChatEntry[]> {
+  conversation(otherUserId: string): Promise<ChatEntry[]> {
     return firstValueFrom(
-      this.http.get<ChatEntry[]>(`/api/messages/${otherUserId}`, { withCredentials: true })
+      this.http.get<ChatEntry[]>(`/api/messages/${otherUserId}`)
     );
   }
 
-  block(otherUserId: number): Promise<unknown> {
+  block(otherUserId: string): Promise<unknown> {
     return firstValueFrom(
-      this.http.post(`/api/users/${otherUserId}/block`, {}, { withCredentials: true })
+      this.http.post(`/api/users/${otherUserId}/block`, {})
     );
   }
 
-  unblock(otherUserId: number): Promise<unknown> {
+  unblock(otherUserId: string): Promise<unknown> {
     return firstValueFrom(
-      this.http.post(`/api/users/${otherUserId}/unblock`, {}, { withCredentials: true })
+      this.http.post(`/api/users/${otherUserId}/unblock`, {})
     );
   }
 
   notifications(): Promise<AppNotification[]> {
     return firstValueFrom(
-      this.http.get<AppNotification[]>('/api/notifications', { withCredentials: true })
+      this.http.get<AppNotification[]>('/api/notifications')
     );
   }
 
   markNotificationsRead(): Promise<unknown> {
     return firstValueFrom(
-      this.http.post('/api/notifications/read', {}, { withCredentials: true })
+      this.http.post('/api/notifications/read', {})
     );
   }
 
   events(): Promise<DateEvent[]> {
-    return firstValueFrom(this.http.get<DateEvent[]>('/api/events', { withCredentials: true }));
+    return firstValueFrom(this.http.get<DateEvent[]>('/api/events'));
   }
 
   proposeEvent(body: {
-    inviteeId: number;
+    inviteeId: string;
     title: string;
     location: string;
     startsAt: string;
   }): Promise<DateEvent> {
     return firstValueFrom(
-      this.http.post<DateEvent>('/api/events', body, { withCredentials: true })
+      this.http.post<DateEvent>('/api/events', body)
     );
   }
 
-  respondToEvent(eventId: number, action: 'accept' | 'decline' | 'cancel'): Promise<DateEvent> {
+  respondToEvent(eventId: string, action: 'accept' | 'decline' | 'cancel'): Promise<DateEvent> {
     return firstValueFrom(
-      this.http.post<DateEvent>(`/api/events/${eventId}/${action}`, {}, { withCredentials: true })
+      this.http.post<DateEvent>(`/api/events/${eventId}/${action}`, {})
     );
   }
 }

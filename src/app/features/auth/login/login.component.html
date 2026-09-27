@@ -3,11 +3,31 @@
   <p class="subtitle">Welcome back to GlanceSync.</p>
 
   @if (justRegistered) {
-    <p class="notice" role="status">Account created. Sign in to continue.</p>
+    <p class="notice" role="status">Account created. Check your inbox and open the link we sent to confirm your email.</p>
+  }
+
+  @if (verified === 'success') {
+    <p class="notice" role="status">Email confirmed. You can sign in now.</p>
+  } @else if (verified === 'invalid') {
+    <p class="alert" role="alert">That confirmation link is invalid or has expired. Sign in to request a new one.</p>
   }
 
   @if (formError()) {
     <p class="alert" role="alert">{{ formError() }}</p>
+  }
+
+  @if (needsVerification()) {
+    <form class="resend" (submit)="$event.preventDefault(); resend()" novalidate>
+      <label for="resendEmail">Didn't get the email? Send a new link to:</label>
+      <input id="resendEmail" type="email" autocomplete="email"
+             [value]="resendEmail()" (input)="resendEmail.set($any($event.target).value)" />
+      <button type="submit" [disabled]="resending() || !resendEmail().trim()">
+        {{ resending() ? 'Sending…' : 'Resend link' }}
+      </button>
+      @if (resendNotice()) {
+        <p class="notice" role="status">{{ resendNotice() }}</p>
+      }
+    </form>
   }
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>

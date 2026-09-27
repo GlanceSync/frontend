@@ -4,9 +4,9 @@
  */
 export interface ChatEntry {
   kind: 'message' | 'call';
-  id: number;
-  senderId: number;
-  recipientId: number;
+  id: string;
+  senderId: string;
+  recipientId: string;
   body?: string;
   createdAt: string;
   readAt?: string;

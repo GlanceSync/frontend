@@ -83,7 +83,7 @@ export class EventsComponent {
     try {
       const raw = this.form.getRawValue();
       await this.people.proposeEvent({
-        inviteeId: Number(raw.inviteeId),
+        inviteeId: raw.inviteeId,
         title: raw.title.trim(),
         location: raw.location.trim(),
         // datetime-local has no timezone, so it is read as local time and sent as UTC.

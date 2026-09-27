@@ -1,8 +1,8 @@
 /** A notification row. */
 export interface AppNotification {
-  id: number;
+  id: string;
   type: string;
-  actorId?: number;
+  actorId?: string;
   actorUsername?: string;
   body: string;
   createdAt: string;

@@ -1,6 +1,6 @@
 /** A person in the people list, as the API returns them. */
 export interface Person {
-  id: number;
+  id: string;
   username: string;
   avatarUrl?: string;
   online: boolean;

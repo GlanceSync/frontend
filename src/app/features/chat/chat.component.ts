@@ -34,7 +34,7 @@ export class ChatComponent {
   readonly error = signal<string | null>(null);
   readonly partner = signal<Person | null>(null);
 
-  readonly otherUserId = computed(() => Number(this.id()));
+  readonly otherUserId = computed(() => this.id());
   readonly connected = this.realtime.connected;
   readonly sendError = this.realtime.lastError;
 
@@ -197,7 +197,7 @@ export class ChatComponent {
     void this.calls.start(this.otherUserId(), partner?.username ?? 'Someone', mode, partner?.avatarUrl);
   }
 
-  selfId(): number | undefined {
+  selfId(): string | undefined {
     return this.auth.currentUser()?.id;
   }
 
@@ -205,7 +205,7 @@ export class ChatComponent {
     return entry.senderId === this.selfId();
   }
 
-  private belongsHere(entry: { senderId: number; recipientId: number }): boolean {
+  private belongsHere(entry: { senderId: string; recipientId: string }): boolean {
     const other = this.otherUserId();
     return entry.senderId === other || entry.recipientId === other;
   }
@@ -290,7 +290,7 @@ export class ChatComponent {
     return at.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
-  private async load(otherUserId: number): Promise<void> {
+  private async load(otherUserId: string): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     this.realtime.lastError.set(null);
