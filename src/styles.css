@@ -175,11 +175,38 @@ app-chat {
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 750;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   letter-spacing: -0.02em;
-  color: var(--accent);
   text-decoration: none;
+}
+
+.brand-mark {
+  display: block;
+  height: 36px;
+  width: auto;
+}
+
+/* Colours taken from the logo: "Glance" is white, "Sync" runs coral → magenta → violet.
+   White would vanish on the light header, so "Glance" uses the text colour there. */
+.brand-name {
+  color: var(--text);
+}
+
+.brand-sync {
+  background: linear-gradient(90deg, #ff4f6e 0%, #f026b0 50%, #9a2dfd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .brand-name {
+    color: #ffffff;
+  }
 }
 
 .header-nav {
