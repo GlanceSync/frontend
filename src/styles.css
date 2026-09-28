@@ -1,95 +1,63 @@
 /* GlanceSync global styles.
-   Everything is driven by the tokens in :root, which are redefined for dark mode,
-   so a colour is never written twice. */
+   Everything is driven by the tokens in :root, so a colour is never written twice. */
 
+/* The palette is lifted straight from the GlanceSync logo: a deep plum night
+   background, with the mark running coral -> magenta -> violet. The logo lives on
+   dark, so the site does too, in every OS theme. */
 :root {
-  /* A warm rose, chosen to belong to this app rather than borrow another's:
-     not messenger green, not chat-client blurple. */
-  --bg: #f6f2f4;
-  --bg-accent: #f7e8ef;
-  --surface: #ffffff;
-  --surface-2: #fbf7f9;
-  --border: #ece3e8;
-  --border-strong: #dccfd6;
-  --text: #221c1f;
-  --text-muted: #7a6d74;
-  --text-strong: #141012;
+  color-scheme: dark;
 
-  --accent: #d24f7c;
-  --accent-hover: #ba3e69;
-  --accent-soft: #fceaf1;
+  --brand-coral: #ff6b7a;
+  --brand-pink: #f23f9d;
+  --brand-magenta: #d43fd8;
+  --brand-violet: #8b3dff;
+  --brand-gradient: linear-gradient(120deg, var(--brand-coral) 0%, var(--brand-pink) 38%, var(--brand-magenta) 68%, var(--brand-violet) 100%);
+  --brand-gradient-text: linear-gradient(90deg, #ff5f6d 0%, #f038a8 50%, #b347f5 100%);
+
+  --bg: #0d0715;
+  --bg-accent: #221331;
+  --surface: #150c21;
+  --surface-2: #1b1029;
+  --border: #2a1a3b;
+  --border-strong: #3c2753;
+  --text: #f1eaf8;
+  --text-muted: #a898bb;
+  --text-strong: #ffffff;
+
+  --accent: #9457ff;
+  --accent-hover: #a970ff;
+  --accent-soft: #221543;
   --on-accent: #ffffff;
 
-  /* Bubbles get their own tokens: a tint reads better than a saturated fill. */
-  --bubble-in: #ffffff;
-  --bubble-in-text: #221c1f;
-  --bubble-out: #fbe0ea;
-  --bubble-out-text: #3d1225;
-  --input-bg: #f2ecef;
+  --bubble-in: #1f1430;
+  --bubble-in-text: #f1eaf8;
+  --bubble-out: var(--brand-gradient);
+  --bubble-out-text: #ffffff;
+  --input-bg: #1a0f28;
 
-  /* Blue reads as "read" almost universally, and sits well against the rose. */
-  --tick: #a3959c;
-  --tick-read: #2f80ed;
+  /* Ticks sit on the gradient bubble, so they stay light; "read" is full white. */
+  --tick: rgba(255, 255, 255, 0.6);
+  --tick-read: #ffffff;
 
-  --success: #17794c;
-  --success-bg: #e6f5ee;
-  --success-border: #b5e0cb;
-  --danger: #c93a45;
-  --danger-bg: #fdeaec;
-  --danger-border: #f3c6cb;
-  --online: #22a559;
+  --success: #4ade80;
+  --success-bg: #12291f;
+  --success-border: #1f5136;
+  --danger: #ff6b7a;
+  --danger-bg: #331320;
+  --danger-border: #5e2338;
+  --online: #2fd47a;
 
-  --radius: 14px;
-  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-sm: 11px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgba(34, 28, 31, 0.06);
-  --shadow: 0 2px 12px rgba(34, 28, 31, 0.07);
-  --shadow-lg: 0 18px 48px rgba(34, 28, 31, 0.2);
-  --ring: 0 0 0 3px rgba(210, 79, 124, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.65);
+  --glow: 0 6px 22px rgba(148, 87, 255, 0.35);
+  --ring: 0 0 0 3px rgba(148, 87, 255, 0.4);
 
   --header-height: 58px;
   --transition: 140ms ease;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #151113;
-    --bg-accent: #2b1f26;
-    --surface: #1d171b;
-    --surface-2: #241d22;
-    --border: #2f262c;
-    --border-strong: #3f343b;
-    --text: #ece6e9;
-    --text-muted: #a2949b;
-    --text-strong: #ffffff;
-
-    --accent: #ef7fa6;
-    --accent-hover: #f79ab8;
-    --accent-soft: #3a2029;
-    --on-accent: #2a0d18;
-
-    --bubble-in: #262029;
-    --bubble-in-text: #ece6e9;
-    --bubble-out: #5d2440;
-    --bubble-out-text: #fae7f0;
-    --input-bg: #251e23;
-
-    --tick: #9a8c93;
-    --tick-read: #6aa8f7;
-
-    --success: #4ade80;
-    --success-bg: #14301f;
-    --success-border: #1f5136;
-    --danger: #f58f97;
-    --danger-bg: #351a1d;
-    --danger-border: #5e2a2f;
-    --online: #2fc46a;
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.6);
-    --ring: 0 0 0 3px rgba(239, 127, 166, 0.35);
-  }
 }
 
 * {
@@ -104,9 +72,13 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(242, 63, 157, 0.14), transparent 60%),
+    radial-gradient(800px 520px at 92% 4%, rgba(139, 61, 255, 0.16), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -190,23 +162,17 @@ app-chat {
   width: auto;
 }
 
-/* Colours taken from the logo: "Glance" is white, "Sync" runs coral → magenta → violet.
-   White would vanish on the light header, so "Glance" uses the text colour there. */
+/* Colours taken from the logo: "Glance" is white, "Sync" runs coral → magenta → violet. */
 .brand-name {
-  color: var(--text);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .brand-sync {
-  background: linear-gradient(90deg, #ff4f6e 0%, #f026b0 50%, #9a2dfd 100%);
+  background: var(--brand-gradient-text);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-}
-
-@media (prefers-color-scheme: dark) {
-  .brand-name {
-    color: #ffffff;
-  }
 }
 
 .header-nav {
@@ -435,17 +401,19 @@ button[type='submit'] {
   margin-top: 1.4rem;
   padding: 0.72rem 1rem;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition), transform var(--transition);
+  box-shadow: var(--glow);
+  transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 
 button[type='submit']:hover:not(:disabled) {
-  background: var(--accent-hover);
+  filter: brightness(1.1);
+  box-shadow: 0 8px 28px rgba(148, 87, 255, 0.5);
 }
 
 button[type='submit']:active:not(:disabled) {
@@ -586,7 +554,7 @@ button[type='submit']:disabled {
   height: 19px;
   padding: 0 6px;
   border-radius: var(--radius-pill);
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: var(--on-accent);
   font-size: 0.7rem;
   font-weight: 700;
@@ -635,8 +603,8 @@ button[type='submit']:disabled {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: hsl(var(--avatar-hue, 245) 72% 92%);
-  color: hsl(var(--avatar-hue, 245) 55% 34%);
+  background: hsl(var(--avatar-hue, 245) 38% 26%);
+  color: hsl(var(--avatar-hue, 245) 80% 82%);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -644,12 +612,7 @@ button[type='submit']:disabled {
   user-select: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  .avatar {
-    background: hsl(var(--avatar-hue, 245) 38% 26%);
-    color: hsl(var(--avatar-hue, 245) 80% 82%);
-  }
-}
+
 
 .meta-line {
   color: var(--text-muted);
@@ -1289,6 +1252,7 @@ button[type='submit']:disabled {
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--on-accent);
+  box-shadow: var(--glow);
   font: inherit;
   font-size: 0.88rem;
   font-weight: 650;
@@ -1361,13 +1325,13 @@ button[type='submit']:disabled {
   flex: 0 0 auto;
   padding: 0.6rem 1.15rem;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: #ffffff;
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition), opacity var(--transition);
+  transition: filter var(--transition), opacity var(--transition);
 }
 
 /* Nothing to send yet: dimmed, but still clickable so it can explain itself. */
@@ -1376,7 +1340,7 @@ button[type='submit']:disabled {
 }
 
 .composer button:hover:not(:disabled) {
-  background: var(--accent-hover);
+  filter: brightness(1.1);
 }
 
 .composer button:disabled {
@@ -1390,7 +1354,7 @@ button[type='submit']:disabled {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(8, 10, 15, 0.9);
+  background: rgba(9, 4, 15, 0.9);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -1404,10 +1368,10 @@ button[type='submit']:disabled {
   to { opacity: 1; }
 }
 
-/* The call surface stays dark in both themes: it is a focused, full-screen moment. */
+/* The call surface is the darkest layer: a focused, full-screen moment. */
 .call-box {
   width: min(720px, 100%);
-  background: #171a23;
+  background: #170d24;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 20px;
   padding: 0.75rem 0.75rem 1.1rem;
@@ -1434,7 +1398,7 @@ button[type='submit']:disabled {
   justify-content: center;
   background:
     radial-gradient(circle at 50% 38%, hsl(var(--avatar-hue, 245) 45% 26% / 0.9), transparent 62%),
-    #0c0e14;
+    #0b0613;
 }
 
 .call-stage.has-video {
@@ -1538,7 +1502,7 @@ button[type='submit']:disabled {
   border-radius: 50%;
   background: #1e9e5a;
   color: #fff;
-  border: 3px solid #171a23;
+  border: 3px solid #170d24;
 }
 
 /* ---- Video ---- */
@@ -1761,7 +1725,7 @@ button[type='submit']:disabled {
 
 .call-btn-toggle.off {
   background: #fff;
-  color: #171a23;
+  color: #170d24;
 }
 
 .call-btn-accept {
