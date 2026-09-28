@@ -3,11 +3,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth/auth.service';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ToastService } from '../../../core/services/toast/toast.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, IconComponent],
   templateUrl: './login.component.html'
 })
 export class LoginComponent {
@@ -23,6 +24,7 @@ export class LoginComponent {
   readonly resending = signal(false);
 
   readonly submitting = signal(false);
+  readonly showPassword = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required]],
