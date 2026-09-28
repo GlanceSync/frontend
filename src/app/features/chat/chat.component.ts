@@ -8,6 +8,7 @@ import { AuthService } from '../../core/services/auth/auth.service';
 import { PeopleService } from '../../core/services/people/people.service';
 import { RealtimeService } from '../../core/services/realtime/realtime.service';
 import { CallService } from '../../core/services/call/call.service';
+import { ToastService } from '../../core/services/toast/toast.service';
 import { ChatEntry } from '../../core/interfaces/chat/ChatEntry';
 import { ChatMessage } from '../../core/interfaces/chat/ChatMessage';
 import { Person } from '../../core/interfaces/user/Person';
@@ -23,6 +24,7 @@ export class ChatComponent {
   private readonly realtime = inject(RealtimeService);
   private readonly auth = inject(AuthService);
   private readonly calls = inject(CallService);
+  private readonly toast = inject(ToastService);
 
   /** Bound from the route by withComponentInputBinding(). */
   readonly id = input.required<string>();
@@ -31,12 +33,12 @@ export class ChatComponent {
 
   readonly entries = signal<ChatEntry[]>([]);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
+  /** The last load failed; the reason went to a toast, the page offers a retry. */
+  readonly loadFailed = signal(false);
   readonly partner = signal<Person | null>(null);
 
   readonly otherUserId = computed(() => this.id());
   readonly connected = this.realtime.connected;
-  readonly sendError = this.realtime.lastError;
 
   readonly partnerOnline = computed(() => this.realtime.onlineUserIds().has(this.otherUserId()));
 
@@ -181,12 +183,14 @@ export class ChatComponent {
       if (partner.blocked) {
         await this.people.unblock(partner.id);
         this.partner.set({ ...partner, blocked: false });
+        this.toast.success(`${partner.username} is unblocked.`);
       } else {
         await this.people.block(partner.id);
         this.partner.set({ ...partner, blocked: true });
+        this.toast.success(`${partner.username} is blocked.`);
       }
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.toast.apiError(error);
     } finally {
       this.blocking.set(false);
     }
@@ -290,10 +294,13 @@ export class ChatComponent {
     return at.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
+  retry(): void {
+    void this.load(this.otherUserId());
+  }
+
   private async load(otherUserId: string): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
-    this.realtime.lastError.set(null);
+    this.loadFailed.set(false);
     try {
       const [history, everyone] = await Promise.all([
         this.people.conversation(otherUserId),
@@ -304,7 +311,8 @@ export class ChatComponent {
       this.realtime.markRead(otherUserId);
       this.afterRender();
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.loadFailed.set(true);
+      this.toast.apiError(error);
     } finally {
       this.loading.set(false);
     }
@@ -314,19 +322,16 @@ export class ChatComponent {
     const body = this.form.getRawValue().body.trim();
     if (!body) {
       // Nothing typed: say so rather than appearing to do nothing at all.
-      this.realtime.lastError.set('Type a message first.');
+      this.toast.error('Type a message first.');
       return;
     }
 
-    this.realtime.lastError.set(null);
     // The sent message comes back from the server, so nothing is added locally here.
     if (this.realtime.sendChat(this.otherUserId(), body)) {
       this.form.reset({ body: '' });
     } else {
       // The text is deliberately left in the box so nothing is lost.
-      this.realtime.lastError.set(
-        'Not connected to the server, so that message was not sent. Reconnecting…'
-      );
+      this.toast.error('Not connected to the server, so that message was not sent. Reconnecting…');
     }
   }
 

@@ -2,13 +2,6 @@
   <h1>Profile</h1>
   <p class="subtitle">Your photo shows in chats and on the screen of anyone you call.</p>
 
-  @if (error()) {
-    <p class="alert" role="alert">{{ error() }}</p>
-  }
-  @if (notice()) {
-    <p class="notice" role="status">{{ notice() }}</p>
-  }
-
   @if (user(); as me) {
     <div class="profile-photo">
       <!-- The avatar is also a drop target, and a click on it opens the file picker. -->

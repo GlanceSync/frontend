@@ -19,7 +19,6 @@ export class CallOverlayComponent {
 
   readonly state = this.calls.state;
   readonly call = this.calls.call;
-  readonly error = this.calls.error;
   readonly isVideo = this.calls.isVideo;
   readonly micEnabled = this.calls.micEnabled;
   readonly cameraEnabled = this.calls.cameraEnabled;
@@ -130,10 +129,6 @@ export class CallOverlayComponent {
 
   toggleCamera(): void {
     this.calls.toggleCamera();
-  }
-
-  dismissError(): void {
-    this.calls.dismissError();
   }
 
   hue(): number {

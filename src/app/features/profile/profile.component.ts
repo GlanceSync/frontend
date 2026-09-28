@@ -1,5 +1,6 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/services/auth/auth.service';
+import { ToastService } from '../../core/services/toast/toast.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
@@ -16,6 +17,7 @@ const MAX_SOURCE_BYTES = 15 * 1024 * 1024;
 })
 export class ProfileComponent {
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   readonly user = this.auth.currentUser;
 
@@ -24,8 +26,6 @@ export class ProfileComponent {
 
   readonly busy = signal(false);
   readonly dragging = signal(false);
-  readonly error = signal<string | null>(null);
-  readonly notice = signal<string | null>(null);
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.discardPending());
@@ -61,13 +61,12 @@ export class ProfileComponent {
       return;
     }
     this.busy.set(true);
-    this.error.set(null);
     try {
       await this.auth.uploadAvatar(pending.blob);
       this.discardPending();
-      this.notice.set('Profile photo updated.');
+      this.toast.success('Profile photo updated.');
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.toast.apiError(error);
     } finally {
       this.busy.set(false);
     }
@@ -75,7 +74,6 @@ export class ProfileComponent {
 
   cancel(): void {
     this.discardPending();
-    this.error.set(null);
   }
 
   async remove(): Promise<void> {
@@ -83,13 +81,11 @@ export class ProfileComponent {
       return;
     }
     this.busy.set(true);
-    this.error.set(null);
-    this.notice.set(null);
     try {
       await this.auth.removeAvatar();
-      this.notice.set('Profile photo removed.');
+      this.toast.success('Profile photo removed.');
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.toast.apiError(error);
     } finally {
       this.busy.set(false);
     }
@@ -97,15 +93,13 @@ export class ProfileComponent {
 
   /** Crops the picked image to a centred square and shrinks it before anything is sent. */
   private async prepare(file: File): Promise<void> {
-    this.error.set(null);
-    this.notice.set(null);
 
     if (!file.type.startsWith('image/')) {
-      this.error.set('That file is not an image.');
+      this.toast.error('That file is not an image.');
       return;
     }
     if (file.size > MAX_SOURCE_BYTES) {
-      this.error.set('That image is too large. Choose one under 15 MB.');
+      this.toast.error('That image is too large. Choose one under 15 MB.');
       return;
     }
 
@@ -113,7 +107,7 @@ export class ProfileComponent {
     try {
       bitmap = await createImageBitmap(file);
     } catch {
-      this.error.set('That image could not be read. Try a JPEG or PNG.');
+      this.toast.error('That image could not be read. Try a JPEG or PNG.');
       return;
     }
 
@@ -140,7 +134,7 @@ export class ProfileComponent {
       canvas.toBlob(resolve, 'image/jpeg', 0.9)
     );
     if (!blob) {
-      this.error.set('That image could not be processed.');
+      this.toast.error('That image could not be processed.');
       return;
     }
 

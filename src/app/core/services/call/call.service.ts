@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeService } from '../realtime/realtime.service';
+import { ToastService } from '../toast/toast.service';
 import { CallSignal } from '../../interfaces/call/CallSignal';
 
 /** Used when the server cannot be asked; enough for calls on the same network. */
@@ -26,10 +27,10 @@ interface ActiveCall {
 export class CallService {
   private readonly realtime = inject(RealtimeService);
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
 
   readonly state = signal<CallState>('idle');
   readonly call = signal<ActiveCall | null>(null);
-  readonly error = signal<string | null>(null);
   readonly localStream = signal<MediaStream | null>(null);
   readonly remoteStream = signal<MediaStream | null>(null);
   readonly micEnabled = signal(true);
@@ -81,7 +82,6 @@ export class CallService {
     if (this.state() !== 'idle') {
       return;
     }
-    this.error.set(null);
     this.call.set({ callId: null, peerId, peerName, peerAvatarUrl, mode, incoming: false });
     this.state.set('calling');
 
@@ -125,7 +125,7 @@ export class CallService {
       this.pendingOffer = null;
     } catch (error) {
       this.hangUp();
-      this.error.set(this.mediaErrorText(error));
+      this.toast.error(this.mediaErrorText(error));
     }
   }
 
@@ -159,10 +159,6 @@ export class CallService {
       track.enabled = !track.enabled;
       this.cameraEnabled.set(track.enabled);
     }
-  }
-
-  dismissError(): void {
-    this.error.set(null);
   }
 
   private async onSignal(message: CallSignal): Promise<void> {
@@ -394,7 +390,7 @@ export class CallService {
     this.call.set(null);
     this.state.set('idle');
     if (message) {
-      this.error.set(message);
+      this.toast.error(message);
     }
   }
 

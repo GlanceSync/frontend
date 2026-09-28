@@ -34,8 +34,9 @@
 
   @if (loading()) {
     <p class="placeholder">Loading conversation…</p>
-  } @else if (error()) {
-    <p class="alert" role="alert">{{ error() }}</p>
+  } @else if (loadFailed()) {
+    <p class="placeholder">This conversation could not be loaded.</p>
+    <button type="button" class="link-button" (click)="retry()">Try again</button>
   } @else {
     <div class="messages" #scroller>
       <!-- The opening of a direct message, shown above the whole history. -->
@@ -101,10 +102,6 @@
         <app-icon name="block" [size]="16" />
         <span>{{ notice }}</span>
       </p>
-    }
-
-    @if (sendError()) {
-      <p class="alert" role="alert">{{ sendError() }}</p>
     }
 
     <form class="composer" [formGroup]="form" (ngSubmit)="submit()" novalidate>

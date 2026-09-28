@@ -5,7 +5,7 @@ export type IconName =
   | 'phone' | 'phone-off' | 'phone-incoming'
   | 'bell' | 'users' | 'calendar' | 'message' | 'send'
   | 'log-out' | 'arrow-left' | 'check' | 'check-double' | 'x' | 'clock' | 'slash'
-  | 'block' | 'unblock' | 'more' | 'plus' | 'maximize' | 'minimize' | 'camera' | 'upload';
+  | 'block' | 'unblock' | 'more' | 'plus' | 'maximize' | 'minimize' | 'camera' | 'upload' | 'alert-circle';
 
 /**
  * Inline SVG icons. Drawn with `currentColor` and a 24px grid so an icon inherits the
@@ -146,6 +146,11 @@ export type IconName =
         @case ('clock') {
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
+        }
+        @case ('alert-circle') {
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
         }
         @case ('slash') {
           <circle cx="12" cy="12" r="10" />

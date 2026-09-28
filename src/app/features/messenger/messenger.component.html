@@ -25,9 +25,9 @@
 
     @if (loading()) {
       <p class="placeholder">Loading…</p>
-    } @else if (error()) {
+    } @else if (loadFailed()) {
       <div class="conversations-empty">
-        <p class="alert" role="alert">{{ error() }}</p>
+        <p class="placeholder">Conversations could not be loaded.</p>
         <button type="button" class="ghost-button" (click)="load()">Try again</button>
       </div>
     } @else if (conversations().length === 0) {

@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth/auth.service';
 import { PeopleService } from '../../core/services/people/people.service';
+import { ToastService } from '../../core/services/toast/toast.service';
 import { RealtimeService } from '../../core/services/realtime/realtime.service';
 import { Person } from '../../core/interfaces/user/Person';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -23,6 +24,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 })
 export class MessengerComponent {
   private readonly people = inject(PeopleService);
+  private readonly toast = inject(ToastService);
   private readonly realtime = inject(RealtimeService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -32,7 +34,8 @@ export class MessengerComponent {
 
   private readonly loaded = signal<Person[]>([]);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
+  /** The last load failed; the reason went to a toast, the page offers a retry. */
+  readonly loadFailed = signal(false);
   readonly search = signal('');
 
   /**
@@ -108,11 +111,12 @@ export class MessengerComponent {
 
   async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
+    this.loadFailed.set(false);
     try {
       this.loaded.set(await this.people.list());
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.loadFailed.set(true);
+      this.toast.apiError(error);
     } finally {
       this.loading.set(false);
     }

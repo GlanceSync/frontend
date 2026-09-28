@@ -2,8 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { IconComponent, IconName } from '../../shared/components/icon/icon.component';
-import { AuthService } from '../../core/services/auth/auth.service';
 import { PeopleService } from '../../core/services/people/people.service';
+import { ToastService } from '../../core/services/toast/toast.service';
 import { RealtimeService } from '../../core/services/realtime/realtime.service';
 import { AppNotification } from '../../core/interfaces/notification/AppNotification';
 
@@ -14,11 +14,13 @@ import { AppNotification } from '../../core/interfaces/notification/AppNotificat
 })
 export class NotificationsComponent {
   private readonly people = inject(PeopleService);
+  private readonly toast = inject(ToastService);
   private readonly realtime = inject(RealtimeService);
 
   readonly items = signal<AppNotification[]>([]);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
+  /** The last load failed; the reason went to a toast, the page offers a retry. */
+  readonly loadFailed = signal(false);
 
   constructor() {
     void this.load();
@@ -33,13 +35,14 @@ export class NotificationsComponent {
 
   async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
+    this.loadFailed.set(false);
     try {
       this.items.set(await this.people.notifications());
       // Opening the page is what marks them read; the badge clears via the socket.
       await this.people.markNotificationsRead();
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.loadFailed.set(true);
+      this.toast.apiError(error);
     } finally {
       this.loading.set(false);
     }

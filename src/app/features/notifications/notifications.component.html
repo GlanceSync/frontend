@@ -4,8 +4,8 @@
 
   @if (loading()) {
     <p class="placeholder">Loading…</p>
-  } @else if (error()) {
-    <p class="alert" role="alert">{{ error() }}</p>
+  } @else if (loadFailed()) {
+    <p class="placeholder">Notifications could not be loaded.</p>
     <button type="button" class="link-button" (click)="load()">Try again</button>
   } @else if (items().length === 0) {
     <p class="placeholder">Nothing yet.</p>

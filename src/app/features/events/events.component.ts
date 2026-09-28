@@ -3,8 +3,15 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { AuthService } from '../../core/services/auth/auth.service';
 import { PeopleService } from '../../core/services/people/people.service';
+import { ToastService } from '../../core/services/toast/toast.service';
 import { DateEvent } from '../../core/interfaces/event/DateEvent';
 import { Person } from '../../core/interfaces/user/Person';
+
+const RESPONSE_MESSAGES: Record<'accept' | 'decline' | 'cancel', string> = {
+  accept: 'Invitation accepted.',
+  decline: 'Invitation declined.',
+  cancel: 'Date cancelled.'
+};
 
 @Component({
   selector: 'app-events',
@@ -15,12 +22,11 @@ export class EventsComponent {
   private readonly fb = inject(FormBuilder);
   private readonly people = inject(PeopleService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   readonly events = signal<DateEvent[]>([]);
   readonly candidates = signal<Person[]>([]);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
-  readonly formError = signal<string | null>(null);
   readonly saving = signal(false);
 
   readonly upcoming = computed(() =>
@@ -43,13 +49,12 @@ export class EventsComponent {
 
   async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const [events, people] = await Promise.all([this.people.events(), this.people.list()]);
       this.events.set(events);
       this.candidates.set(people);
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.toast.apiError(error);
     } finally {
       this.loading.set(false);
     }
@@ -73,7 +78,6 @@ export class EventsComponent {
   }
 
   async submit(): Promise<void> {
-    this.formError.set(null);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -90,23 +94,24 @@ export class EventsComponent {
         startsAt: new Date(raw.startsAt).toISOString()
       });
       this.form.reset({ inviteeId: '', title: '', location: '', startsAt: '' });
+      this.toast.success('Invitation sent.');
       await this.load();
     } catch (error) {
-      this.formError.set(AuthService.toApiError(error).message);
+      this.toast.apiError(error);
     } finally {
       this.saving.set(false);
     }
   }
 
   async respond(event: DateEvent, action: 'accept' | 'decline' | 'cancel'): Promise<void> {
-    this.error.set(null);
     try {
       const updated = await this.people.respondToEvent(event.id, action);
       this.events.update(current =>
         current.map(item => (item.id === updated.id ? updated : item))
       );
+      this.toast.success(RESPONSE_MESSAGES[action]);
     } catch (error) {
-      this.error.set(AuthService.toApiError(error).message);
+      this.toast.apiError(error);
     }
   }
 

@@ -1,11 +1,3 @@
-@if (error(); as message) {
-  <div class="call-toast" role="alert">
-    <app-icon name="slash" [size]="16" />
-    <span>{{ message }}</span>
-    <button type="button" class="link-button" (click)="dismissError()">Dismiss</button>
-  </div>
-}
-
 @if (state() !== 'idle') {
   <div class="call-overlay" role="dialog" aria-modal="true"
        [attr.aria-label]="statusText() + ' — ' + call()?.peerName">

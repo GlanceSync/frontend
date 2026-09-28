@@ -2,10 +2,6 @@
   <h1>Dates</h1>
   <p class="subtitle">Propose somewhere to meet, and answer invitations you receive.</p>
 
-  @if (formError()) {
-    <p class="alert" role="alert">{{ formError() }}</p>
-  }
-
   <form class="event-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <label for="inviteeId">Who</label>
     <select id="inviteeId" formControlName="inviteeId">
@@ -29,10 +25,6 @@
       <span>{{ saving() ? 'Sending…' : 'Send invitation' }}</span>
     </button>
   </form>
-
-  @if (error()) {
-    <p class="alert" role="alert">{{ error() }}</p>
-  }
 
   @if (loading()) {
     <p class="placeholder">Loading dates…</p>

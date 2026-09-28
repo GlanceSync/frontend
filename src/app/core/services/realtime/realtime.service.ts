@@ -6,6 +6,7 @@ import { CallSignal } from '../../interfaces/call/CallSignal';
 import { ChatEntry } from '../../interfaces/chat/ChatEntry';
 import { ChatMessage } from '../../interfaces/chat/ChatMessage';
 import { AuthService } from '../auth/auth.service';
+import { ToastService } from '../toast/toast.service';
 
 /** Every server push shares this envelope; `type` decides how to read the rest. */
 interface RealtimeMessage {
@@ -47,6 +48,7 @@ interface ChatReadEvent extends RealtimeMessage {
 export class RealtimeService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   /** Who is currently online. Authoritative only while `connected()` is true. */
@@ -75,9 +77,6 @@ export class RealtimeService {
   private readonly readReceipts$ = new Subject<string>();
   /** Emits the id of a user who just read our messages. */
   readonly readReceipts: Observable<string> = this.readReceipts$.asObservable();
-
-  /** The most recent rejection from the server, for the composer to show. */
-  readonly lastError = signal<string | null>(null);
 
   /** Unread notifications, behind the bell in the header. */
   readonly notificationUnread = signal(0);
@@ -333,7 +332,7 @@ export class RealtimeService {
         break;
       }
       case 'chat:error': {
-        this.lastError.set(String(message['message'] ?? 'Your message could not be sent.'));
+        this.toast.error(String(message['message'] ?? 'Your message could not be sent.'));
         break;
       }
       default:
