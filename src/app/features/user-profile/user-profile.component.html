@@ -1,0 +1,52 @@
+<section class="panel public-profile">
+  @if (loading()) {
+    <p class="placeholder">Loading profile…</p>
+  } @else {
+    @if (profile(); as person) {
+    <div class="public-profile-head">
+      <app-avatar class="profile-avatar" [name]="person.username" [src]="person.avatarUrl" />
+      <div>
+        <h1>{{ person.firstName }} {{ person.lastName }}</h1>
+        <p class="subtitle">&#64;{{ person.username }} · {{ person.age }} years old
+          @if (person.city) { · {{ person.city }} }
+          @if (person.distanceKm != null) { · {{ person.distanceKm }} km away }
+        </p>
+        <div class="profile-actions">
+          <button type="button" class="solid-button" (click)="toggleLike()" [disabled]="busy()">
+            {{ person.likedByMe ? 'Unlike' : 'Like' }}
+          </button>
+          <a class="ghost-button" [routerLink]="['/chat', person.id]">
+            <app-icon name="message" [size]="16" /> Message
+          </a>
+          <button type="button" class="ghost-button danger" (click)="reportOpen.set(true)">Report</button>
+        </div>
+      </div>
+    </div>
+
+    @if (person.connected) { <p class="match-banner">You matched with {{ person.firstName }}.</p> }
+    <p class="profile-biography">{{ person.biography || 'No biography yet.' }}</p>
+    <div class="interest-list">
+      @for (interest of person.interests; track interest) { <span class="interest-chip">{{ interest }}</span> }
+    </div>
+    <div class="public-picture-grid">
+      @for (picture of person.pictures; track picture.id) {
+        <img [src]="picture.url" [alt]="person.firstName + ' profile photo'" />
+      }
+    </div>
+    @if (reportOpen()) {
+      <div class="modal-backdrop" (click)="reportOpen.set(false)">
+        <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+          <h2>Report {{ person.username }}</h2>
+          <p class="modal-text">Tell us why you believe this is a fake account.</p>
+          <textarea maxlength="500" placeholder="Reason (optional)"
+                    [value]="reportReason()" (input)="reportReason.set($any($event.target).value)"></textarea>
+          <div class="modal-actions">
+            <button type="button" class="ghost-button" (click)="reportOpen.set(false)">Cancel</button>
+            <button type="button" class="solid-button danger" (click)="report()" [disabled]="busy()">Send report</button>
+          </div>
+        </div>
+      </div>
+    }
+    }
+  }
+</section>

@@ -1,0 +1,177 @@
+<section class="panel profile-panel profile-editor">
+  <h1>{{ onboarding() ? 'Complete your profile' : 'Your profile' }}</h1>
+  <p class="subtitle">
+    {{ onboarding() ? 'Add the details below before you start using GlanceSync.' : 'Keep your public profile up to date.' }}
+  </p>
+
+  @if (loading()) {
+    <p class="placeholder">Loading your profile…</p>
+  } @else {
+    @if (profile(); as me) {
+    @if (onboarding()) {
+      <div class="completion-note">
+        A photo, biography, birth date, location and at least one interest are required.
+      </div>
+    }
+
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+      <section class="profile-section">
+        <h2>Profile photo</h2>
+        <div class="profile-photo">
+          <label class="profile-drop" for="avatar-file" [class.dragging]="dragging()"
+                 (dragover)="onDragOver($event)" (dragleave)="dragging.set(false)"
+                 (drop)="onDrop($event)" title="Choose a photo">
+            <app-avatar class="profile-avatar" [name]="me.username"
+                        [src]="pending()?.url ?? me.avatarUrl" />
+            <span class="profile-drop-hint" aria-hidden="true"><app-icon name="camera" [size]="22" /></span>
+          </label>
+          <div class="profile-photo-side">
+            <span class="profile-name">{{ me.username }}</span>
+            <small class="meta-line">JPEG, PNG or WebP, up to 5 MB.</small>
+            <label class="ghost-button" for="avatar-file">
+              <app-icon name="upload" [size]="16" />
+              <span>{{ me.avatarUrl ? 'Change profile photo' : 'Add profile photo' }}</span>
+            </label>
+            @if (pending()) {
+              <button type="button" class="link-button" (click)="cancel()">Discard selected photo</button>
+            }
+          </div>
+          <input id="avatar-file" class="visually-hidden" type="file"
+                 accept="image/jpeg,image/png,image/webp" (change)="onFileChosen($event)" />
+        </div>
+      </section>
+
+      <section class="profile-section profile-form-grid">
+        <h2>About you</h2>
+        <label for="gender">Gender</label>
+        <select id="gender" formControlName="gender">
+          <option value="">Choose your gender</option>
+          <option value="FEMALE">Female</option>
+          <option value="MALE">Male</option>
+        </select>
+
+        <label for="preference">Interested in</label>
+        <select id="preference" formControlName="sexualPreference">
+          <option value="HETEROSEXUAL">Opposite gender</option>
+          <option value="HOMOSEXUAL">Same gender</option>
+          <option value="BISEXUAL">Everyone</option>
+        </select>
+
+        <label for="birthDate">Birth date</label>
+        <input id="birthDate" type="date" formControlName="birthDate" />
+
+        <label for="biography">Biography</label>
+        <textarea id="biography" formControlName="biography" maxlength="1000"
+                  placeholder="Tell people a little about yourself"></textarea>
+
+        <span class="field-label">Interests</span>
+        <fieldset class="interest-select" aria-describedby="interest-help">
+          <legend class="visually-hidden">Choose your interests</legend>
+          @if (availableInterests().length === 0) {
+            <span class="meta-line">No interests are available yet.</span>
+          } @else {
+            @for (interest of availableInterests(); track interest.id) {
+              <label class="interest-option" [class.selected]="interestSelected(interest.name)">
+                <input type="checkbox"
+                       [checked]="interestSelected(interest.name)"
+                       [disabled]="!interestSelected(interest.name) && selectedInterests().length >= 10"
+                       (change)="toggleInterest(interest.name, $any($event.target).checked)" />
+                <span>{{ interest.name }}</span>
+              </label>
+            }
+          }
+        </fieldset>
+        <small id="interest-help" class="form-help">
+          Select at least one and up to 10 interests · {{ selectedInterests().length }}/10 selected
+        </small>
+      </section>
+
+      <section class="profile-section profile-form-grid">
+        <h2>Location</h2>
+        <div class="location-choice">
+          <button type="button" class="ghost-button" (click)="useCurrentLocation()"
+                  [disabled]="locating() || resolvingPlace()">
+            {{ locating() ? 'Finding you…' : (resolvingPlace() ? 'Finding city…' : 'Use current location') }}
+          </button>
+          <span class="meta-line">or enter your city manually</span>
+        </div>
+        <label for="city">City</label>
+        <div class="city-search-control">
+          <input id="city" type="search" formControlName="city" maxlength="100"
+                 placeholder="City, country" autocomplete="off"
+                 (keydown.enter)="$event.preventDefault(); searchCities()" />
+          <button type="button" class="ghost-button" (click)="searchCities()"
+                  [disabled]="searchingCities() || locating() || resolvingPlace()">
+            {{ searchingCities() ? 'Searching…' : 'Search cities' }}
+          </button>
+        </div>
+
+        @if (cityResults().length) {
+          <div class="city-results" role="listbox" aria-label="Matching cities">
+            @for (result of cityResults(); track result.place_id) {
+              <button type="button" class="city-result" role="option" (click)="selectCity(result)">
+                <strong>{{ result.address?.city ?? result.address?.town ?? result.address?.village ?? result.name ?? result.display_name.split(',')[0] }}</strong>
+                <span>{{ result.display_name }}</span>
+              </button>
+            }
+          </div>
+        }
+        <small class="geocode-attribution">
+          City search © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+        </small>
+      </section>
+
+      <button type="submit" [disabled]="busy()">
+        {{ busy() ? 'Saving…' : (onboarding() ? 'Finish profile' : 'Save profile') }}
+      </button>
+    </form>
+
+    @if (!onboarding()) {
+      <section class="profile-section">
+        <div class="section-heading-row">
+          <div>
+            <h2>More photos</h2>
+            <p class="meta-line">Add up to five photos. Choose which one appears as your avatar.</p>
+          </div>
+          @if (me.pictures.length < 5) {
+            <label class="ghost-button" for="gallery-file">Add photo</label>
+            <input id="gallery-file" class="visually-hidden" type="file"
+                   accept="image/jpeg,image/png,image/webp" (change)="uploadExtra($event)" />
+          }
+        </div>
+        <div class="picture-grid">
+          @for (picture of me.pictures; track picture.id) {
+            <article class="picture-card">
+              <img [src]="picture.url" alt="Profile photo" />
+              <div class="picture-actions">
+                @if (picture.profile) {
+                  <span class="status">Profile</span>
+                } @else {
+                  <button type="button" class="link-button" (click)="makePrimary(picture)">Make profile</button>
+                }
+                <button type="button" class="link-button danger" (click)="removePicture(picture)">Remove</button>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+
+      <section class="profile-section">
+        <h2>Account</h2>
+        <form [formGroup]="accountForm" (ngSubmit)="saveAccount()" class="profile-form-grid" novalidate>
+          <label for="firstName">First name</label>
+          <input id="firstName" type="text" formControlName="firstName" autocomplete="given-name" />
+          <label for="lastName">Last name</label>
+          <input id="lastName" type="text" formControlName="lastName" autocomplete="family-name" />
+          <label for="accountEmail">Email</label>
+          <input id="accountEmail" type="email" formControlName="email" autocomplete="email" />
+          @if (account()?.pendingEmail; as pendingEmail) {
+            <small class="form-help">Waiting for confirmation from {{ pendingEmail }}.</small>
+          }
+          <button type="submit" [disabled]="busy()">Save account</button>
+        </form>
+      </section>
+    }
+    }
+  }
+</section>

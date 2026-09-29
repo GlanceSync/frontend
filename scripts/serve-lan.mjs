@@ -38,7 +38,7 @@ const allowedHosts = [...new Set(['localhost', ...localAddresses, ...extraHosts]
 const isNoise = name => name === 'lo' || name.startsWith('br-') || name.startsWith('docker') || name.startsWith('veth');
 const reachable = interfaces.filter(entry => !isNoise(entry.name));
 
-const port = process.env.PORT ?? '4201';
+const port = process.env.PORT ?? '4200';
 const useSsl = process.env.SSL === '1' || process.env.SSL === 'true';
 const scheme = useSsl ? 'https' : 'http';
 

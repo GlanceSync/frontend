@@ -1,0 +1,89 @@
+<section class="panel">
+  <h1>Dates</h1>
+  <p class="subtitle">Propose somewhere to meet, and answer invitations you receive.</p>
+
+  <form class="event-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label for="inviteeId">Who</label>
+    <select id="inviteeId" formControlName="inviteeId">
+      <option value="">Choose someone…</option>
+      @for (person of candidates(); track person.id) {
+        <option [value]="person.id">{{ person.username }}</option>
+      }
+    </select>
+
+    <label for="title">What</label>
+    <input id="title" type="text" formControlName="title" placeholder="Coffee at the pier" maxlength="120" />
+
+    <label for="location">Where</label>
+    <input id="location" type="text" formControlName="location" placeholder="Old Port" maxlength="160" />
+
+    <label for="startsAt">When</label>
+    <input id="startsAt" type="datetime-local" formControlName="startsAt" />
+
+    <button type="submit" [disabled]="saving() || form.invalid">
+      <app-icon name="send" [size]="16" />
+      <span>{{ saving() ? 'Sending…' : 'Send invitation' }}</span>
+    </button>
+  </form>
+
+  @if (loading()) {
+    <p class="placeholder">Loading dates…</p>
+  } @else {
+    <h2 class="section-title">Upcoming</h2>
+    @if (upcoming().length === 0) {
+      <p class="placeholder">No dates planned yet.</p>
+    } @else {
+      <ul class="events">
+        @for (event of upcoming(); track event.id) {
+          <li class="event">
+            <span class="event-main">
+              <span class="event-title">{{ event.title }}</span>
+              <small class="meta-line">
+                {{ whenLabel(event.startsAt) }}
+                @if (event.location) { · {{ event.location }} }
+                · with {{ otherPerson(event) }}
+              </small>
+            </span>
+
+            <span class="status status-{{ event.status }}">{{ event.status }}</span>
+
+            <span class="event-actions">
+              @if (canAnswer(event)) {
+                <button type="button" class="ghost-button ghost-ok" (click)="respond(event, 'accept')">
+                  <app-icon name="check" [size]="16" />
+                  <span>Accept</span>
+                </button>
+                <button type="button" class="ghost-button ghost-danger" (click)="respond(event, 'decline')">
+                  <app-icon name="x" [size]="16" />
+                  <span>Decline</span>
+                </button>
+              } @else if (canCancel(event)) {
+                <button type="button" class="ghost-button ghost-danger" (click)="respond(event, 'cancel')">
+                  <app-icon name="slash" [size]="16" />
+                  <span>Cancel</span>
+                </button>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (past().length > 0) {
+      <h2 class="section-title">Past</h2>
+      <ul class="events">
+        @for (event of past(); track event.id) {
+          <li class="event past">
+            <span class="event-main">
+              <span class="event-title">{{ event.title }}</span>
+              <small class="meta-line">
+                {{ whenLabel(event.startsAt) }} · with {{ otherPerson(event) }}
+              </small>
+            </span>
+            <span class="status status-{{ event.status }}">{{ event.status }}</span>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

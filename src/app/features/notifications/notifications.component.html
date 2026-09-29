@@ -1,0 +1,33 @@
+<section class="panel">
+  <h1>Notifications</h1>
+  <p class="subtitle">Messages, calls and date invitations.</p>
+
+  @if (loading()) {
+    <p class="placeholder">Loading…</p>
+  } @else if (loadFailed()) {
+    <p class="placeholder">Notifications could not be loaded.</p>
+    <button type="button" class="link-button" (click)="load()">Try again</button>
+  } @else if (items().length === 0) {
+    <p class="placeholder">Nothing yet.</p>
+  } @else {
+    <ul class="notifications">
+      @for (item of items(); track item.id) {
+        <li class="notification" [class.unread]="!item.readAt">
+          <span class="notification-icon" [class.icon-alert]="item.type === 'call_missed' || item.type === 'user_blocked'" aria-hidden="true">
+            <app-icon [name]="icon(item.type)" [size]="16" />
+          </span>
+          <span class="notification-text">
+            <span>{{ item.body }}</span>
+            <small class="meta-line">{{ when(item.createdAt) }}</small>
+          </span>
+          @if (item.actorId) {
+            <a class="ghost-button" [routerLink]="['/chat', item.actorId]">
+              <app-icon name="message" [size]="16" />
+              <span>Open</span>
+            </a>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

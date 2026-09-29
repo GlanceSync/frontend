@@ -1,20 +1,23 @@
 import { Component, effect, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService } from './core/auth.service';
-import { RealtimeService } from './core/realtime.service';
-import { CallOverlayComponent } from './pages/call/call-overlay.component';
-import { IconComponent } from './shared/icon.component';
-import { AvatarComponent } from './shared/avatar.component';
+import { AuthService } from './core/services/auth/auth.service';
+import { RealtimeService } from './core/services/realtime/realtime.service';
+import { CallOverlayComponent } from './features/call/call-overlay/call-overlay.component';
+import { IconComponent } from './shared/components/icon/icon.component';
+import { AvatarComponent } from './shared/components/avatar/avatar.component';
+import { ToastService } from './core/services/toast/toast.service';
+import { ToastComponent } from './shared/components/toast/toast.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CallOverlayComponent, IconComponent, AvatarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CallOverlayComponent, IconComponent, AvatarComponent, ToastComponent],
   templateUrl: './app.component.html'
 })
 export class AppComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly realtime = inject(RealtimeService);
+  private readonly toast = inject(ToastService);
 
   /** Drives the header. Phase 3 and 4 hang the unread badges off this same shell. */
   readonly currentUser = this.auth.currentUser;
@@ -33,7 +36,7 @@ export class AppComponent {
   constructor() {
     // The socket's lifetime follows the session: opened on sign-in, closed on sign-out.
     effect(() => {
-      if (this.currentUser()) {
+      if (this.currentUser()?.profileCompleted) {
         this.realtime.connect();
       } else {
         this.realtime.disconnect();
@@ -43,6 +46,7 @@ export class AppComponent {
 
   async logout(): Promise<void> {
     await this.auth.logout();
+    this.toast.success('You have been signed out.');
     await this.router.navigate(['/login']);
   }
 }

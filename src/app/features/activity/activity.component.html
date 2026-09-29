@@ -1,0 +1,31 @@
+<section class="panel activity-page">
+  <h1>Activity</h1>
+  <p class="subtitle">People who liked or viewed your profile.</p>
+  @if (loading()) {
+    <p class="placeholder">Loading activity…</p>
+  } @else {
+    <div class="activity-columns">
+      <section>
+        <h2>Likes</h2>
+        @if (!likedBy().length) { <p class="placeholder">No likes yet.</p> }
+        @for (person of likedBy(); track person.id) {
+          <a class="activity-row" [routerLink]="['/profile', person.id]">
+            <app-avatar [name]="person.username" [src]="person.avatarUrl" />
+            <span><strong>{{ person.username }}</strong><small>{{ when(person.at) }}</small></span>
+            @if (person.connected) { <span class="status status-accepted">Match</span> }
+          </a>
+        }
+      </section>
+      <section>
+        <h2>Profile views</h2>
+        @if (!views().length) { <p class="placeholder">No views yet.</p> }
+        @for (person of views(); track person.id) {
+          <a class="activity-row" [routerLink]="['/profile', person.id]">
+            <app-avatar [name]="person.username" [src]="person.avatarUrl" />
+            <span><strong>{{ person.username }}</strong><small>{{ when(person.at) }}</small></span>
+          </a>
+        }
+      </section>
+    </div>
+  }
+</section>
