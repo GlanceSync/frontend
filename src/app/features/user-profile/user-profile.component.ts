@@ -1,6 +1,8 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PeopleService } from '../../core/services/people/people.service';
+import { ProfileService } from '../../core/services/profile/profile.service';
+import { ActivityService } from '../../core/services/activity/activity.service';
 import { Profile } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
@@ -13,6 +15,8 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 })
 export class UserProfileComponent {
   private readonly people = inject(PeopleService);
+  private readonly profiles = inject(ProfileService);
+  private readonly activity = inject(ActivityService);
   private readonly toast = inject(ToastService);
 
   readonly id = input.required<string>();
@@ -27,7 +31,7 @@ export class UserProfileComponent {
   async load(): Promise<void> {
     this.loading.set(true);
     try {
-      this.profile.set(await this.people.profile(this.id()));
+      this.profile.set(await this.profiles.profile(this.id()));
     } catch (error) {
       this.toast.apiError(error);
     } finally {
@@ -41,8 +45,8 @@ export class UserProfileComponent {
     this.busy.set(true);
     try {
       const state = profile.likedByMe
-        ? await this.people.unlike(profile.id)
-        : await this.people.like(profile.id);
+        ? await this.activity.unlike(profile.id)
+        : await this.activity.like(profile.id);
       this.profile.set({ ...profile, ...state });
       this.toast.success(state.connected ? "It's a match!" : state.likedByMe ? 'Liked.' : 'Like removed.');
     } catch (error) {

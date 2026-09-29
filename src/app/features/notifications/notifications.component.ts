@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { IconComponent, IconName } from '../../shared/components/icon/icon.component';
-import { PeopleService } from '../../core/services/people/people.service';
+import { NotificationService } from '../../core/services/notification/notification.service';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { RealtimeService } from '../../core/services/realtime/realtime.service';
 import { AppNotification } from '../../core/interfaces/notification/AppNotification';
@@ -13,7 +13,7 @@ import { AppNotification } from '../../core/interfaces/notification/AppNotificat
   templateUrl: './notifications.component.html'
 })
 export class NotificationsComponent {
-  private readonly people = inject(PeopleService);
+  private readonly notifications = inject(NotificationService);
   private readonly toast = inject(ToastService);
   private readonly realtime = inject(RealtimeService);
 
@@ -37,9 +37,9 @@ export class NotificationsComponent {
     this.loading.set(true);
     this.loadFailed.set(false);
     try {
-      this.items.set(await this.people.notifications());
+      this.items.set(await this.notifications.notifications());
       // Opening the page is what marks them read; the badge clears via the socket.
-      await this.people.markNotificationsRead();
+      await this.notifications.markNotificationsRead();
     } catch (error) {
       this.loadFailed.set(true);
       this.toast.apiError(error);

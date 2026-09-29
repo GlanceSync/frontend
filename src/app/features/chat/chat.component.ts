@@ -6,6 +6,7 @@ import { IconComponent, IconName } from '../../shared/components/icon/icon.compo
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { AuthService } from '../../core/services/auth/auth.service';
 import { PeopleService } from '../../core/services/people/people.service';
+import { MessageService } from '../../core/services/message/message.service';
 import { RealtimeService } from '../../core/services/realtime/realtime.service';
 import { CallService } from '../../core/services/call/call.service';
 import { ToastService } from '../../core/services/toast/toast.service';
@@ -21,6 +22,7 @@ import { Person } from '../../core/interfaces/user/Person';
 export class ChatComponent {
   private readonly fb = inject(FormBuilder);
   private readonly people = inject(PeopleService);
+  private readonly messages = inject(MessageService);
   private readonly realtime = inject(RealtimeService);
   private readonly auth = inject(AuthService);
   private readonly calls = inject(CallService);
@@ -303,7 +305,7 @@ export class ChatComponent {
     this.loadFailed.set(false);
     try {
       const [history, everyone] = await Promise.all([
-        this.people.conversation(otherUserId),
+        this.messages.conversation(otherUserId),
         this.people.list()
       ]);
       this.entries.set(history);

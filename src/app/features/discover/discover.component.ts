@@ -1,7 +1,10 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { PeopleService } from '../../core/services/people/people.service';
+import { DiscoveryService } from '../../core/services/discovery/discovery.service';
+import { ProfileService } from '../../core/services/profile/profile.service';
+import { InterestService } from '../../core/services/interest/interest.service';
+import { ActivityService } from '../../core/services/activity/activity.service';
 import { DiscoveryCard, DiscoveryPreferences, Interest, Profile } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -12,7 +15,10 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
   templateUrl: './discover.component.html'
 })
 export class DiscoverComponent {
-  private readonly people = inject(PeopleService);
+  private readonly discovery = inject(DiscoveryService);
+  private readonly profiles = inject(ProfileService);
+  private readonly interests = inject(InterestService);
+  private readonly activity = inject(ActivityService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
 
@@ -71,7 +77,7 @@ export class DiscoverComponent {
   async loadDeck(): Promise<void> {
     this.loading.set(true);
     try {
-      this.candidates.set(await this.people.discover());
+      this.candidates.set(await this.discovery.discover());
       this.index.set(0);
       await this.loadCurrent();
     } catch (error) {
@@ -117,7 +123,7 @@ export class DiscoverComponent {
 
     this.preferencesSaving.set(true);
     try {
-      const saved = await this.people.saveDiscoveryPreferences({
+      const saved = await this.discovery.saveDiscoveryPreferences({
         minAge, maxAge, minFame, maxFame,
         distance: this.numberOrNull(value.distance),
         city: value.city.trim() || null,
@@ -149,7 +155,7 @@ export class DiscoverComponent {
     if (!profile || this.acting()) return;
     this.acting.set(true);
     try {
-      const state = await this.people.like(profile.id);
+      const state = await this.activity.like(profile.id);
       this.dragX.set(520);
       if (state.connected) this.toast.success(`You matched with ${profile.firstName}!`);
       await this.delay(180);
@@ -213,7 +219,7 @@ export class DiscoverComponent {
         continue;
       }
       try {
-        this.profile.set(await this.people.profile(id));
+        this.profile.set(await this.profiles.profile(id));
         return;
       } catch {
         this.index.update(value => value + 1);
@@ -226,8 +232,8 @@ export class DiscoverComponent {
     this.preferencesLoading.set(true);
     try {
       const [preferences, interests] = await Promise.all([
-        this.people.discoveryPreferences(),
-        this.people.interests()
+        this.discovery.discoveryPreferences(),
+        this.interests.interests()
       ]);
       this.availableInterests.set(interests);
       this.applyPreferences(preferences);

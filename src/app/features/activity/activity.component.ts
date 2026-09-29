@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PeopleService } from '../../core/services/people/people.service';
+import { ActivityService } from '../../core/services/activity/activity.service';
 import { ProfileActivity } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
@@ -11,7 +11,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
   templateUrl: './activity.component.html'
 })
 export class ActivityComponent {
-  private readonly people = inject(PeopleService);
+  private readonly activity = inject(ActivityService);
   private readonly toast = inject(ToastService);
 
   readonly likedBy = signal<ProfileActivity[]>([]);
@@ -22,7 +22,7 @@ export class ActivityComponent {
 
   async load(): Promise<void> {
     try {
-      const [likedBy, views] = await Promise.all([this.people.likedBy(), this.people.profileViews()]);
+      const [likedBy, views] = await Promise.all([this.activity.likedBy(), this.activity.profileViews()]);
       this.likedBy.set(likedBy);
       this.views.set(views);
     } catch (error) {

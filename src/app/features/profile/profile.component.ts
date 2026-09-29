@@ -4,7 +4,9 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth/auth.service';
-import { PeopleService } from '../../core/services/people/people.service';
+import { ProfileService } from '../../core/services/profile/profile.service';
+import { PictureService } from '../../core/services/picture/picture.service';
+import { InterestService } from '../../core/services/interest/interest.service';
 import { Account, Interest, Picture, Profile } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
@@ -37,7 +39,9 @@ interface CitySearchResult {
 })
 export class ProfileComponent {
   private readonly auth = inject(AuthService);
-  private readonly people = inject(PeopleService);
+  private readonly profiles = inject(ProfileService);
+  private readonly pictures = inject(PictureService);
+  private readonly interests = inject(InterestService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
@@ -86,9 +90,9 @@ export class ProfileComponent {
     this.loading.set(true);
     try {
       const [profile, account, interests] = await Promise.all([
-        this.people.myProfile(),
-        this.people.account(),
-        this.people.interests()
+        this.profiles.myProfile(),
+        this.profiles.account(),
+        this.interests.interests()
       ]);
       this.profile.set(profile);
       this.account.set(account);
@@ -150,22 +154,22 @@ export class ProfileComponent {
         await this.auth.uploadAvatar(pending.blob);
         this.discardPending();
       }
-      await this.people.updateProfile({
+      await this.profiles.updateProfile({
         gender: values.gender as 'MALE' | 'FEMALE',
         sexualPreference: values.sexualPreference as 'HETEROSEXUAL' | 'HOMOSEXUAL' | 'BISEXUAL',
         biography: values.biography.trim(),
         birthDate: values.birthDate
       });
       if (values.locationSource === 'GPS') {
-        await this.people.updateLocation({
+        await this.profiles.updateLocation({
           source: 'GPS', latitude: values.latitude!, longitude: values.longitude!,
           city: values.city.trim() || undefined
         });
       } else {
-        await this.people.updateLocation({ source: 'MANUAL', city: values.city.trim() });
+        await this.profiles.updateLocation({ source: 'MANUAL', city: values.city.trim() });
       }
-      await this.people.replaceInterests(names);
-      const updated = await this.people.myProfile();
+      await this.interests.replaceInterests(names);
+      const updated = await this.profiles.myProfile();
       this.profile.set(updated);
       this.auth.syncProfileState(updated);
       if (updated.completed) {
@@ -204,7 +208,7 @@ export class ProfileComponent {
     }
     this.busy.set(true);
     try {
-      const account = await this.people.updateAccount(this.accountForm.getRawValue());
+      const account = await this.profiles.updateAccount(this.accountForm.getRawValue());
       this.account.set(account);
       this.toast.success(account.pendingEmail ? 'Check your new email address to confirm it.' : 'Account updated.');
     } catch (error) {
@@ -366,7 +370,7 @@ export class ProfileComponent {
     if (!file || !this.validImage(file)) return;
     this.busy.set(true);
     try {
-      this.updatePictures(await this.people.uploadPicture(file));
+      this.updatePictures(await this.pictures.uploadPicture(file));
       this.toast.success('Photo added.');
     } catch (error) {
       this.toast.apiError(error);
@@ -378,7 +382,7 @@ export class ProfileComponent {
   async makePrimary(picture: Picture): Promise<void> {
     this.busy.set(true);
     try {
-      this.updatePictures(await this.people.makeProfilePicture(picture.id));
+      this.updatePictures(await this.pictures.makeProfilePicture(picture.id));
       await this.load();
       this.toast.success('Profile picture changed.');
     } catch (error) {
@@ -391,7 +395,7 @@ export class ProfileComponent {
   async removePicture(picture: Picture): Promise<void> {
     this.busy.set(true);
     try {
-      this.updatePictures(await this.people.deletePicture(picture.id));
+      this.updatePictures(await this.pictures.deletePicture(picture.id));
       await this.load();
       this.toast.success('Photo removed.');
     } catch (error) {

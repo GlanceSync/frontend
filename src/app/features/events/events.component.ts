@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { AuthService } from '../../core/services/auth/auth.service';
 import { PeopleService } from '../../core/services/people/people.service';
+import { EventService } from '../../core/services/event/event.service';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { DateEvent } from '../../core/interfaces/event/DateEvent';
 import { Person } from '../../core/interfaces/user/Person';
@@ -21,6 +22,7 @@ const RESPONSE_MESSAGES: Record<'accept' | 'decline' | 'cancel', string> = {
 export class EventsComponent {
   private readonly fb = inject(FormBuilder);
   private readonly people = inject(PeopleService);
+  private readonly dateEvents = inject(EventService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
@@ -50,7 +52,7 @@ export class EventsComponent {
   async load(): Promise<void> {
     this.loading.set(true);
     try {
-      const [events, people] = await Promise.all([this.people.events(), this.people.list()]);
+      const [events, people] = await Promise.all([this.dateEvents.events(), this.people.list()]);
       this.events.set(events);
       this.candidates.set(people);
     } catch (error) {
@@ -86,7 +88,7 @@ export class EventsComponent {
     this.saving.set(true);
     try {
       const raw = this.form.getRawValue();
-      await this.people.proposeEvent({
+      await this.dateEvents.proposeEvent({
         inviteeId: raw.inviteeId,
         title: raw.title.trim(),
         location: raw.location.trim(),
@@ -105,7 +107,7 @@ export class EventsComponent {
 
   async respond(event: DateEvent, action: 'accept' | 'decline' | 'cancel'): Promise<void> {
     try {
-      const updated = await this.people.respondToEvent(event.id, action);
+      const updated = await this.dateEvents.respondToEvent(event.id, action);
       this.events.update(current =>
         current.map(item => (item.id === updated.id ? updated : item))
       );
