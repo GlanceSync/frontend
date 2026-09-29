@@ -339,7 +339,8 @@ label:not(:first-of-type) {
 }
 
 input,
-select {
+select,
+textarea {
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -354,8 +355,19 @@ input::placeholder {
   opacity: 0.75;
 }
 
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--ring);
@@ -544,6 +556,13 @@ button[type='submit']:disabled {
 .switch a {
   color: var(--accent);
   font-weight: 600;
+}
+
+.forgot-link {
+  align-self: center;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .badge {
@@ -1000,6 +1019,17 @@ button[type='submit']:disabled {
 
 .chat-name {
   font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.chat-name:hover {
+  text-decoration: underline;
+}
+
+.avatar-link {
+  display: inline-flex;
+  border-radius: 50%;
 }
 
 .chat-call-actions {
@@ -1850,8 +1880,233 @@ a.username.active {
 }
 
 .profile-panel {
-  max-width: 560px;
+  max-width: 860px;
   margin: 0 auto;
+}
+
+.profile-editor > form {
+  gap: 1.2rem;
+}
+
+.profile-section {
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.profile-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.profile-section h2,
+.activity-page h2 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+
+.completion-note,
+.match-banner {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.profile-form-grid h2,
+.profile-form-grid .location-choice,
+.profile-form-grid .form-help,
+.profile-form-grid button[type='submit'] {
+  grid-column: 1 / -1;
+}
+
+.profile-form-grid label {
+  margin: 0;
+}
+
+.form-help {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.field-label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.interest-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  min-width: 0;
+  max-height: 220px;
+  margin: 0;
+  padding: 0.8rem;
+  overflow-y: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+}
+
+.interest-option {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  cursor: pointer;
+}
+
+.interest-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.interest-option span {
+  display: inline-flex;
+  padding: 0.38rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.interest-option:hover span,
+.interest-option input:focus-visible + span {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.interest-option.selected span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.interest-option input:disabled + span {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.location-choice,
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.picture-grid,
+.public-picture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.picture-card,
+.public-picture-grid img {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.picture-card img,
+.public-picture-grid img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.picture-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem;
+}
+
+.link-button.danger {
+  color: var(--danger);
+}
+
+.setup-required {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.public-profile {
+  position: relative;
+}
+
+.public-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.public-profile-head .subtitle {
+  margin-bottom: 1rem;
+}
+
+.profile-biography {
+  margin: 2rem 0 1rem;
+  white-space: pre-wrap;
+}
+
+.interest-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.interest-chip {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.activity-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.activity-row > span:nth-child(2) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.activity-row small {
+  color: var(--text-muted);
 }
 
 .profile-photo {
@@ -1943,6 +2198,23 @@ a.username.active {
 
   .profile-actions {
     justify-content: center;
+  }
+
+  .profile-form-grid,
+  .activity-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-form-grid h2,
+  .profile-form-grid .location-choice,
+  .profile-form-grid .form-help,
+  .profile-form-grid button[type='submit'] {
+    grid-column: auto;
+  }
+
+  .public-profile-head {
+    flex-direction: column;
+    text-align: center;
   }
 }
 

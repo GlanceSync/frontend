@@ -82,6 +82,34 @@ export class AuthService {
     await firstValueFrom(this.http.post('/api/auth/resend-verification', { email }));
   }
 
+  async forgotPassword(email: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/auth/forgot-password', { email }));
+  }
+
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post('/api/auth/reset-password', { token, password, confirmPassword })
+    );
+  }
+
+  setProfileCompleted(completed: boolean): void {
+    const user = this.currentUser();
+    if (user) {
+      this.currentUser.set({ ...user, profileCompleted: completed });
+    }
+  }
+
+  syncProfileState(profile: { avatarUrl?: string | null; completed?: boolean | null }): void {
+    const user = this.currentUser();
+    if (user) {
+      this.currentUser.set({
+        ...user,
+        avatarUrl: profile.avatarUrl ?? null,
+        profileCompleted: Boolean(profile.completed)
+      });
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.http.post('/api/auth/logout', {}, { withCredentials: true }));

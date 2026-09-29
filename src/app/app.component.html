@@ -6,7 +6,8 @@
 
   @if (currentUser(); as user) {
     <nav class="header-nav">
-      <a routerLink="/chat" routerLinkActive="active" class="nav-link" title="Chats">
+      @if (user.profileCompleted) {
+        <a routerLink="/chat" routerLinkActive="active" class="nav-link" title="Chats">
         <app-icon name="message" />
         <span class="nav-label">Chats</span>
         @if (unreadTotal() > 0) {
@@ -14,23 +15,31 @@
             {{ unreadTotal() }}
           </span>
         }
-      </a>
+        </a>
 
-      <a routerLink="/events" routerLinkActive="active" class="nav-link" title="Dates">
+        <a routerLink="/events" routerLinkActive="active" class="nav-link" title="Dates">
         <app-icon name="calendar" />
         <span class="nav-label">Dates</span>
-      </a>
+        </a>
 
-      <a routerLink="/notifications" routerLinkActive="active" class="nav-link"
+        <a routerLink="/activity" routerLinkActive="active" class="nav-link" title="Likes and profile views">
+          <app-icon name="users" />
+          <span class="nav-label">Activity</span>
+        </a>
+
+        <a routerLink="/notifications" routerLinkActive="active" class="nav-link"
          title="Notifications" aria-label="Notifications">
         <app-icon name="bell" />
         <span class="nav-label">Alerts</span>
         @if (notificationUnread() > 0) {
           <span class="badge">{{ notificationUnread() }}</span>
         }
-      </a>
+        </a>
+      } @else {
+        <span class="setup-required">Complete your profile to continue</span>
+      }
 
-      <a routerLink="/profile" routerLinkActive="active" class="username"
+      <a [routerLink]="user.profileCompleted ? '/profile' : '/complete-profile'" routerLinkActive="active" class="username"
          [title]="(connected() ? 'Connected' : 'Reconnecting…') + ' · Edit profile'">
         <app-avatar class="avatar-tiny" [name]="user.username" [src]="user.avatarUrl">
           <span class="avatar-dot" [class.dot-online]="connected()"></span>

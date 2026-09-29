@@ -61,7 +61,7 @@ export class LoginComponent {
       const { username, password } = this.form.getRawValue();
       const user = await this.auth.login(username, password);
       this.toast.success(`Welcome back, ${user.username}!`);
-      await this.router.navigate(['/users']);
+      await this.router.navigate([user.profileCompleted ? '/chat' : '/complete-profile']);
     } catch (error) {
       this.needsVerification.set(error instanceof HttpErrorResponse && error.status === 403);
       this.toast.apiError(error);

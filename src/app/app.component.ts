@@ -36,7 +36,7 @@ export class AppComponent {
   constructor() {
     // The socket's lifetime follows the session: opened on sign-in, closed on sign-out.
     effect(() => {
-      if (this.currentUser()) {
+      if (this.currentUser()?.profileCompleted) {
         this.realtime.connect();
       } else {
         this.realtime.disconnect();

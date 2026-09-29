@@ -80,10 +80,10 @@ export class MessengerComponent {
   readonly threadOpen = toSignal(
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd),
-      map(() => /^\/chat\/\d+/.test(this.router.url)),
-      startWith(/^\/chat\/\d+/.test(this.router.url))
+      map(() => /^\/chat\/[^/]+/.test(this.router.url)),
+      startWith(/^\/chat\/[^/]+/.test(this.router.url))
     ),
-    { initialValue: /^\/chat\/\d+/.test(this.router.url) }
+    { initialValue: /^\/chat\/[^/]+/.test(this.router.url) }
   );
 
   constructor() {
