@@ -1,6 +1,7 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DiscoveryService } from '../../core/services/discovery/discovery.service';
 import { ProfileService } from '../../core/services/profile/profile.service';
 import { InterestService } from '../../core/services/interest/interest.service';
@@ -47,7 +48,7 @@ export class DiscoverComponent {
     distance: [''],
     city: [''],
     sort: [''],
-    order: ['ASC']
+    order: [{ value: 'ASC', disabled: true }]
   });
 
   readonly cardTransform = computed(() => {
@@ -64,6 +65,15 @@ export class DiscoverComponent {
   });
 
   constructor() {
+    this.preferencesForm.controls.sort.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(sort => {
+        if (sort) {
+          this.preferencesForm.controls.order.enable({ emitEvent: false });
+        } else {
+          this.preferencesForm.controls.order.disable({ emitEvent: false });
+        }
+      });
     void this.loadDeck();
     void this.loadPreferenceData();
   }
@@ -122,16 +132,25 @@ export class DiscoverComponent {
     }
 
     this.preferencesSaving.set(true);
+
     try {
-      const saved = await this.discovery.saveDiscoveryPreferences({
-        minAge, maxAge, minFame, maxFame,
-        distance: this.numberOrNull(value.distance),
-        city: value.city.trim() || null,
-        tags: this.preferenceTags(),
-        sort: value.sort || null,
-        order: value.sort ? value.order : null
-      });
-      this.applyPreferences(saved);
+      const distance = this.numberOrNull(value.distance);
+      const city = value.city.trim();
+      const tags = this.preferenceTags();
+      const preferences: DiscoveryPreferences = {
+        ...(minAge != null ? { minAge } : {}),
+        ...(maxAge != null ? { maxAge } : {}),
+        ...(minFame != null ? { minFame } : {}),
+        ...(maxFame != null ? { maxFame } : {}),
+        ...(distance != null ? { distance } : {}),
+        ...(city ? { city } : {}),
+        ...(tags.length ? { tags } : {}),
+        ...(value.sort ? { sort: value.sort, order: value.order } : {})
+      };
+
+      await this.discovery.saveDiscoveryPreferences(preferences);
+      const persisted = await this.discovery.discoveryPreferences();
+      this.applyPreferences(persisted);
       this.preferencesOpen.set(false);
       this.toast.success('Discovery preferences saved.');
       await this.loadDeck();
@@ -258,9 +277,9 @@ export class DiscoverComponent {
     this.preferenceTags.set(preferences.tags ?? []);
   }
 
-  private numberOrNull(value: string): number | null {
-    if (!value.trim()) return null;
-    const number = Number(value);
+  private numberOrNull(value: string | number | null | undefined): number | null {
+    if (value == null || (typeof value === 'string' && !value.trim())) return null;
+    const number = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(number) ? number : null;
   }
 
