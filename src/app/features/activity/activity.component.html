@@ -9,7 +9,7 @@
         <h2>Likes</h2>
         @if (!likedBy().length) { <p class="placeholder">No likes yet.</p> }
         @for (person of likedBy(); track person.id) {
-          <a class="activity-row" [routerLink]="['/people', person.id]">
+          <a class="activity-row" [routerLink]="['/profile', person.id]">
             <app-avatar [name]="person.username" [src]="person.avatarUrl" />
             <span><strong>{{ person.username }}</strong><small>{{ when(person.at) }}</small></span>
             @if (person.connected) { <span class="status status-accepted">Match</span> }
@@ -20,7 +20,7 @@
         <h2>Profile views</h2>
         @if (!views().length) { <p class="placeholder">No views yet.</p> }
         @for (person of views(); track person.id) {
-          <a class="activity-row" [routerLink]="['/people', person.id]">
+          <a class="activity-row" [routerLink]="['/profile', person.id]">
             <app-avatar [name]="person.username" [src]="person.avatarUrl" />
             <span><strong>{{ person.username }}</strong><small>{{ when(person.at) }}</small></span>
           </a>

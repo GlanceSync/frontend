@@ -7,6 +7,8 @@ import { DateEvent } from '../../interfaces/event/DateEvent';
 import { Person } from '../../interfaces/user/Person';
 import {
   Account,
+  DiscoveryCard,
+  DiscoveryPreferences,
   Gender,
   Interest,
   LikeState,
@@ -24,6 +26,26 @@ export class PeopleService {
   /** Everyone but you, with presence as it stood when the request was served. */
   list(): Promise<Person[]> {
     return firstValueFrom(this.http.get<Person[]>('/api/users'));
+  }
+
+  discover(limit = 50, offset = 0): Promise<DiscoveryCard[]> {
+    return firstValueFrom(
+      this.http.get<DiscoveryCard[]>('/api/users/discover', {
+        params: { limit: String(limit), offset: String(offset) }
+      })
+    );
+  }
+
+  discoveryPreferences(): Promise<DiscoveryPreferences> {
+    return firstValueFrom(
+      this.http.get<DiscoveryPreferences>('/api/users/me/preferences')
+    );
+  }
+
+  saveDiscoveryPreferences(preferences: DiscoveryPreferences): Promise<DiscoveryPreferences> {
+    return firstValueFrom(
+      this.http.put<DiscoveryPreferences>('/api/users/me/preferences', preferences)
+    );
   }
 
   myProfile(): Promise<Profile> {

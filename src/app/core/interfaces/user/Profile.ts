@@ -65,3 +65,22 @@ export interface ProfileActivity {
   at: string;
   connected: boolean;
 }
+
+export interface DiscoveryCard {
+  id?: string;
+  userId?: string;
+  username?: string;
+  avatarUrl?: string | null;
+}
+
+export interface DiscoveryPreferences {
+  minAge?: number | null;
+  maxAge?: number | null;
+  minFame?: number | null;
+  maxFame?: number | null;
+  distance?: number | null;
+  city?: string | null;
+  tags?: string[] | null;
+  sort?: string | null;
+  order?: string | null;
+}

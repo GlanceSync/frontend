@@ -3,7 +3,7 @@ import { guestGuard } from './core/guards/guest.guard';
 import { incompleteProfileGuard, profileCompleteGuard } from './core/guards/profile-complete.guard';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'chat' },
+  { path: '', pathMatch: 'full', redirectTo: 'discover' },
   {
     path: 'login',
     canActivate: [guestGuard],
@@ -36,6 +36,12 @@ export const routes: Routes = [
   },
   // The conversation list is the shell; a thread is a child of it, so the list stays
   // mounted and only the right-hand pane changes as you move between conversations.
+  {
+    path: 'discover',
+    canActivate: [profileCompleteGuard],
+    loadComponent: () => import('./features/discover/discover.component').then(m => m.DiscoverComponent),
+    title: 'Discover · GlanceSync'
+  },
   {
     path: 'chat',
     canActivate: [profileCompleteGuard],
@@ -70,11 +76,12 @@ export const routes: Routes = [
     title: 'Profile · GlanceSync'
   },
   {
-    path: 'people/:id',
+    path: 'profile/:id',
     canActivate: [profileCompleteGuard],
     loadComponent: () => import('./features/user-profile/user-profile.component').then(m => m.UserProfileComponent),
     title: 'Profile · GlanceSync'
   },
+  { path: 'people/:id', redirectTo: 'profile/:id' },
   {
     path: 'activity',
     canActivate: [profileCompleteGuard],

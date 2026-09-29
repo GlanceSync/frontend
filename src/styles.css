@@ -86,6 +86,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 :focus-visible {
@@ -2007,6 +2008,65 @@ a.username.active {
   flex-wrap: wrap;
 }
 
+.city-search-control {
+  display: flex;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.city-search-control input {
+  flex: 1;
+  min-width: 0;
+}
+
+.city-results {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.city-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.city-result:last-child {
+  border-bottom: 0;
+}
+
+.city-result:hover,
+.city-result:focus-visible {
+  background: var(--accent-soft);
+}
+
+.city-result span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.geocode-attribution {
+  grid-column: 2;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.geocode-attribution a {
+  color: inherit;
+}
+
 .picture-grid,
 .public-picture-grid {
   display: grid;
@@ -2107,6 +2167,308 @@ a.username.active {
 
 .activity-row small {
   color: var(--text-muted);
+}
+
+/* ---------- Discover ---------- */
+
+.discover-page {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.discover-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.discover-heading .subtitle {
+  margin-bottom: 0;
+}
+
+.swipe-stage {
+  position: relative;
+  min-height: 620px;
+}
+
+.swipe-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.swipe-card.dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.swipe-photo {
+  position: relative;
+  flex: 1;
+  min-height: 460px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.swipe-photo > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.photo-progress {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 5px;
+}
+
+.photo-progress span {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.photo-progress span.active {
+  background: #ffffff;
+}
+
+.photo-nav {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 22%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.photo-prev { left: 0; }
+.photo-next { right: 0; }
+
+.swipe-summary {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.35rem;
+  background: rgba(0, 0, 0, 0.76);
+  color: #ffffff;
+}
+
+.swipe-summary h2 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.swipe-summary p {
+  margin: 0.35rem 0 0;
+  color: #dddddd;
+}
+
+.profile-info-link {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  color: #ffffff;
+  font-family: Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.swipe-details {
+  min-height: 120px;
+  padding: 1rem 1.25rem;
+}
+
+.swipe-details > p {
+  display: -webkit-box;
+  margin: 0 0 0.8rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.swipe-details .interest-list {
+  margin: 0;
+}
+
+.swipe-stamp {
+  position: absolute;
+  top: 64px;
+  z-index: 4;
+  padding: 0.35rem 0.7rem;
+  border: 4px solid currentColor;
+  border-radius: 10px;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stamp-like {
+  left: 24px;
+  color: var(--success);
+  transform: rotate(-12deg);
+}
+
+.stamp-pass {
+  right: 24px;
+  color: var(--danger);
+  transform: rotate(12deg);
+}
+
+.swipe-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  padding-top: 1.25rem;
+}
+
+.swipe-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform var(--transition), background var(--transition);
+}
+
+.swipe-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--accent-soft);
+}
+
+.swipe-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pass-action { color: var(--danger); }
+.like-action { color: var(--success); }
+
+.discover-empty {
+  padding: 7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.discover-empty h2 {
+  margin: 0 0 0.5rem;
+}
+
+.preferences-backdrop {
+  position: fixed;
+}
+
+.preferences-modal {
+  width: min(680px, 100%);
+  max-height: min(820px, calc(100vh - 2rem));
+  overflow-y: auto;
+}
+
+.preferences-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.preferences-title-row .modal-text {
+  margin-top: 0.25rem;
+}
+
+.preferences-form {
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.preferences-form fieldset {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.preferences-form legend {
+  padding: 0 0.35rem;
+  font-size: 0.87rem;
+  font-weight: 700;
+}
+
+.preferences-form label,
+.preferences-form label:not(:first-of-type) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.range-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.preference-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.preferences-form .interest-option {
+  display: inline-flex;
+}
+
+.preferences-form .modal-actions {
+  margin-top: 0.25rem;
+}
+
+.preferences-form .modal-actions button {
+  margin-top: 0;
 }
 
 .profile-photo {
@@ -2212,6 +2574,20 @@ a.username.active {
     grid-column: auto;
   }
 
+  .city-results,
+  .geocode-attribution {
+    grid-column: auto;
+  }
+
+  .city-search-control {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .range-fields {
+    grid-template-columns: 1fr;
+  }
+
   .public-profile-head {
     flex-direction: column;
     text-align: center;
@@ -2310,7 +2686,7 @@ a.username.active {
 
 @media (max-width: 640px) {
   .site-main {
-    padding: 1.1rem 0.85rem 2rem;
+    padding: 1rem 0.75rem 1.5rem;
   }
 
   .auth-card,
@@ -2323,7 +2699,34 @@ a.username.active {
   }
 
   .site-header {
-    padding: 0.5rem 0.85rem;
+    align-items: stretch;
+    gap: 0.4rem;
+    padding: 0.45rem 0.65rem 0.55rem;
+  }
+
+  .brand {
+    align-self: flex-start;
+  }
+
+  .brand-mark {
+    height: 30px;
+  }
+
+  .brand-name {
+    font-size: 1.1rem;
+  }
+
+  .header-nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.2rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .header-nav::-webkit-scrollbar {
+    display: none;
   }
 
   /* Icons alone in the header; the words would wrap on a phone. */
@@ -2332,12 +2735,33 @@ a.username.active {
   }
 
   .nav-link {
-    padding: 0.4rem 0.5rem;
+    flex: 0 0 auto;
+    min-width: 38px;
+    min-height: 38px;
+    justify-content: center;
+    padding: 0.45rem;
   }
 
   .username {
-    margin-left: 0.15rem;
-    padding-left: 0.5rem;
+    flex: 0 0 auto;
+    margin-left: 0;
+    padding: 0 0.35rem;
+    border-left: 0;
+  }
+
+  .setup-required {
+    align-self: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toast-stack {
+    top: 112px;
+    right: 10px;
+    width: calc(100vw - 20px);
   }
 
   /* One pane at a time on a phone: the list, or the open conversation. */
@@ -2379,8 +2803,228 @@ a.username.active {
     flex-wrap: wrap;
   }
 
+  .event-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .call-btn {
     width: 52px;
     height: 52px;
+  }
+
+  .discover-page {
+    max-width: none;
+  }
+
+  .discover-heading {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .discover-heading h1 {
+    font-size: 1.7rem;
+  }
+
+  .discover-heading .subtitle {
+    font-size: 0.82rem;
+  }
+
+  .discover-heading .ghost-button {
+    padding: 0.45rem 0.65rem;
+  }
+
+  .swipe-stage {
+    height: clamp(470px, calc(100dvh - 270px), 620px);
+    min-height: 0;
+  }
+
+  .swipe-photo {
+    min-height: 0;
+  }
+
+  .swipe-card {
+    border-radius: 20px;
+  }
+
+  .swipe-summary {
+    padding: 0.85rem 1rem;
+  }
+
+  .swipe-summary h2 {
+    font-size: 1.55rem;
+  }
+
+  .swipe-summary p {
+    font-size: 0.8rem;
+  }
+
+  .swipe-details {
+    min-height: 102px;
+    padding: 0.75rem 1rem;
+  }
+
+  .swipe-details > p {
+    margin-bottom: 0.55rem;
+    font-size: 0.84rem;
+  }
+
+  .swipe-details .interest-chip {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.72rem;
+  }
+
+  .swipe-actions {
+    gap: 2rem;
+    padding-top: 0.85rem;
+  }
+
+  .swipe-action {
+    width: 54px;
+    height: 54px;
+  }
+
+  .preferences-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .preferences-modal {
+    width: 100%;
+    max-height: calc(100dvh - 0.5rem);
+    padding: 1rem;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .preferences-form fieldset {
+    padding: 0.8rem;
+  }
+
+  .preference-tags {
+    max-height: 130px;
+  }
+
+  .profile-form-grid,
+  .activity-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-form-grid h2,
+  .profile-form-grid .location-choice,
+  .profile-form-grid .form-help,
+  .profile-form-grid button[type='submit'],
+  .city-results,
+  .geocode-attribution {
+    grid-column: auto;
+  }
+
+  .profile-form-grid input,
+  .profile-form-grid select,
+  .profile-form-grid textarea {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .profile-photo {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .profile-avatar {
+    width: 104px;
+    height: 104px;
+    font-size: 2.4rem;
+  }
+
+  .picture-grid,
+  .public-picture-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-profile-head {
+    align-items: flex-start;
+  }
+
+  .public-profile-head h1 {
+    font-size: 1.7rem;
+  }
+
+  .modal-backdrop:not(.preferences-backdrop) {
+    padding: 0.75rem;
+  }
+
+  .modal {
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-main {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .site-header {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .nav-link,
+  .icon-button {
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .discover-heading .ghost-button span {
+    display: none;
+  }
+
+  .swipe-stage {
+    height: clamp(440px, calc(100dvh - 255px), 570px);
+  }
+
+  .swipe-details {
+    min-height: 92px;
+  }
+
+  .profile-photo {
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profile-photo-side,
+  .profile-actions {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .range-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 640px) {
+  .swipe-stage {
+    height: 430px;
+  }
+
+  .swipe-details {
+    min-height: 84px;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .swipe-details > p {
+    -webkit-line-clamp: 1;
+  }
+
+  .swipe-actions {
+    padding-top: 0.65rem;
   }
 }

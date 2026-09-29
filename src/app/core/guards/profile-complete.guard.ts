@@ -31,5 +31,5 @@ export const incompleteProfileGuard: CanActivateFn = async () => {
   if (!user) {
     return router.createUrlTree(['/login']);
   }
-  return user.profileCompleted ? router.createUrlTree(['/chat']) : true;
+  return user.profileCompleted ? router.createUrlTree(['/discover']) : true;
 };

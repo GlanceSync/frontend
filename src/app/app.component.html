@@ -7,6 +7,10 @@
   @if (currentUser(); as user) {
     <nav class="header-nav">
       @if (user.profileCompleted) {
+        <a routerLink="/discover" routerLinkActive="active" class="nav-link" title="Discover people">
+          <app-icon name="users" />
+          <span class="nav-label">Discover</span>
+        </a>
         <a routerLink="/chat" routerLinkActive="active" class="nav-link" title="Chats">
         <app-icon name="message" />
         <span class="nav-label">Chats</span>

@@ -4,12 +4,12 @@
       <app-icon name="arrow-left" [size]="18" />
     </a>
 
-    <a [routerLink]="['/people', otherUserId()]" class="avatar-link" title="View profile">
+    <a [routerLink]="['/profile', otherUserId()]" class="avatar-link" title="View profile">
       <app-avatar class="avatar-small" [name]="partner()?.username" [src]="partner()?.avatarUrl" />
     </a>
 
     <div class="chat-who">
-      <a [routerLink]="['/people', otherUserId()]" class="chat-name">{{ partner()?.username ?? 'Conversation' }}</a>
+      <a [routerLink]="['/profile', otherUserId()]" class="chat-name">{{ partner()?.username ?? 'Conversation' }}</a>
       <small class="meta-line">
         <span class="dot" [class.dot-online]="partnerOnline()" aria-hidden="true"></span>
         {{ partnerOnline() ? 'Online' : 'Offline' }}

@@ -13,6 +13,23 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 const AVATAR_SIZE = 512;
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 
+interface CitySearchResult {
+  place_id: number;
+  display_name: string;
+  name?: string;
+  lat: string;
+  lon: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+  };
+}
+
 @Component({
   selector: 'app-profile',
   imports: [ReactiveFormsModule, AvatarComponent, IconComponent],
@@ -36,8 +53,12 @@ export class ProfileComponent {
   readonly dragging = signal(false);
   readonly locating = signal(false);
   readonly resolvingPlace = signal(false);
+  readonly searchingCities = signal(false);
+  readonly cityResults = signal<CitySearchResult[]>([]);
   readonly pending = signal<{ blob: Blob; url: string } | null>(null);
   readonly onboarding = computed(() => !this.user()?.profileCompleted);
+  private readonly citySearchCache = new Map<string, CitySearchResult[]>();
+  private lastNominatimRequestAt = 0;
 
   readonly profileForm = this.fb.nonNullable.group({
     gender: ['', Validators.required],
@@ -149,7 +170,7 @@ export class ProfileComponent {
       this.auth.syncProfileState(updated);
       if (updated.completed) {
         this.toast.success(wasOnboarding ? 'Your profile is ready.' : 'Profile updated.');
-        if (wasOnboarding) await this.router.navigate(['/chat']);
+        if (wasOnboarding) await this.router.navigate(['/discover']);
       } else {
         this.toast.error('Your profile is still missing required information.');
       }
@@ -219,9 +240,65 @@ export class ProfileComponent {
     );
   }
 
+  async searchCities(): Promise<void> {
+    const query = this.profileForm.controls.city.value.trim();
+    if (query.length < 2) {
+      this.toast.error('Enter at least two characters to search for a city.');
+      return;
+    }
+
+    const cacheKey = query.toLocaleLowerCase();
+    const cached = this.citySearchCache.get(cacheKey);
+    if (cached) {
+      this.cityResults.set(cached);
+      if (!cached.length) this.toast.error('No matching cities were found.');
+      return;
+    }
+
+    this.searchingCities.set(true);
+    try {
+      await this.respectNominatimRateLimit();
+      const results = await firstValueFrom(this.http.get<CitySearchResult[]>(
+        'https://nominatim.openstreetmap.org/search',
+        {
+          params: {
+            format: 'jsonv2',
+            q: query,
+            limit: '5',
+            addressdetails: '1',
+            layer: 'address',
+            featureType: 'settlement'
+          }
+        }
+      ));
+      this.citySearchCache.set(cacheKey, results);
+      this.cityResults.set(results);
+      if (!results.length) this.toast.error('No matching cities were found. Try including the country.');
+    } catch {
+      this.toast.error('City search is unavailable right now. Please try again.');
+    } finally {
+      this.searchingCities.set(false);
+    }
+  }
+
+  selectCity(result: CitySearchResult): void {
+    const address = result.address;
+    const city = address?.city ?? address?.town ?? address?.village
+      ?? address?.municipality ?? result.name ?? result.display_name.split(',')[0];
+    this.profileForm.patchValue({
+      locationSource: 'MANUAL',
+      city,
+      latitude: Number(result.lat),
+      longitude: Number(result.lon)
+    });
+    this.cityResults.set([]);
+    this.toast.success(`City selected: ${city}.`);
+  }
+
   private async resolvePlace(latitude: number, longitude: number): Promise<void> {
     this.resolvingPlace.set(true);
     try {
+      await this.respectNominatimRateLimit();
       const result = await firstValueFrom(this.http.get<{
         display_name?: string;
         address?: {
@@ -255,6 +332,12 @@ export class ProfileComponent {
     } finally {
       this.resolvingPlace.set(false);
     }
+  }
+
+  private async respectNominatimRateLimit(): Promise<void> {
+    const wait = Math.max(0, 1000 - (Date.now() - this.lastNominatimRequestAt));
+    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+    this.lastNominatimRequestAt = Date.now();
   }
 
   onFileChosen(event: Event): void {

@@ -96,7 +96,29 @@
           <span class="meta-line">or enter your city manually</span>
         </div>
         <label for="city">City</label>
-        <input id="city" type="text" formControlName="city" maxlength="100" placeholder="Lisbon" />
+        <div class="city-search-control">
+          <input id="city" type="search" formControlName="city" maxlength="100"
+                 placeholder="City, country" autocomplete="off"
+                 (keydown.enter)="$event.preventDefault(); searchCities()" />
+          <button type="button" class="ghost-button" (click)="searchCities()"
+                  [disabled]="searchingCities() || locating() || resolvingPlace()">
+            {{ searchingCities() ? 'Searching…' : 'Search cities' }}
+          </button>
+        </div>
+
+        @if (cityResults().length) {
+          <div class="city-results" role="listbox" aria-label="Matching cities">
+            @for (result of cityResults(); track result.place_id) {
+              <button type="button" class="city-result" role="option" (click)="selectCity(result)">
+                <strong>{{ result.address?.city ?? result.address?.town ?? result.address?.village ?? result.name ?? result.display_name.split(',')[0] }}</strong>
+                <span>{{ result.display_name }}</span>
+              </button>
+            }
+          </div>
+        }
+        <small class="geocode-attribution">
+          City search © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+        </small>
       </section>
 
       <button type="submit" [disabled]="busy()">

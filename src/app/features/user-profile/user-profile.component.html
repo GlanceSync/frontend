@@ -33,8 +33,6 @@
         <img [src]="picture.url" [alt]="person.firstName + ' profile photo'" />
       }
     </div>
-    <p class="meta-line">Fame rating: {{ person.fameRating }}</p>
-
     @if (reportOpen()) {
       <div class="modal-backdrop" (click)="reportOpen.set(false)">
         <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">

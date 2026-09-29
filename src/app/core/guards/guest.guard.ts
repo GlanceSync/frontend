@@ -13,6 +13,6 @@ export const guestGuard: CanActivateFn = async () => {
 
   const user = await auth.ensureResolved();
   return user
-    ? router.createUrlTree([user.profileCompleted ? '/chat' : '/complete-profile'])
+    ? router.createUrlTree([user.profileCompleted ? '/discover' : '/complete-profile'])
     : true;
 };
