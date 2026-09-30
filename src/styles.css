@@ -2099,6 +2099,109 @@ a.username.active {
   padding: 0.55rem;
 }
 
+.gallery-drop-zone {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border: 2px dashed transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.gallery-drop-zone.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.gallery-drop-zone .picture-grid {
+  margin-top: 0;
+}
+
+.gallery-empty,
+.gallery-drop-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 88px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.gallery-empty {
+  flex-direction: column;
+  min-height: 180px;
+  border: 1px dashed var(--border-strong);
+}
+
+.gallery-empty strong {
+  color: var(--text);
+}
+
+.gallery-drop-prompt {
+  min-height: 58px;
+  margin-top: 0.75rem;
+  border: 1px dashed var(--border);
+  font-size: 0.84rem;
+}
+
+.gallery-empty:hover,
+.gallery-drop-prompt:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.photo-editor {
+  width: min(92vw, 720px);
+}
+
+.photo-editor-heading,
+.photo-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.photo-editor-heading .modal-text {
+  margin-bottom: 0;
+}
+
+.photo-editor-canvas {
+  display: block;
+  width: min(100%, 430px);
+  height: auto;
+  margin: 1rem auto;
+  border-radius: var(--radius-sm);
+  background: #111;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.photo-editor-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 1rem;
+}
+
+.photo-editor-controls label {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.photo-editor-controls input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.photo-editor-toolbar {
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
 .link-button.danger {
   color: var(--danger);
 }
@@ -2565,6 +2668,14 @@ a.username.active {
   .profile-form-grid,
   .activity-columns {
     grid-template-columns: 1fr;
+  }
+
+  .photo-editor-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-editor-toolbar {
+    flex-wrap: wrap;
   }
 
   .profile-form-grid h2,
