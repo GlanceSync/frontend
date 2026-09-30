@@ -10,6 +10,8 @@ import { DiscoveryCard, DiscoveryPreferences, Interest, Profile } from '../../co
 import { ToastService } from '../../core/services/toast/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
+const DISCOVERY_PAGE_SIZE = 20;
+
 @Component({
   selector: 'app-discover',
   imports: [RouterLink, ReactiveFormsModule, IconComponent],
@@ -25,6 +27,9 @@ export class DiscoverComponent {
 
   private readonly candidates = signal<DiscoveryCard[]>([]);
   private readonly index = signal(0);
+  private readonly activePreferences = signal<DiscoveryPreferences>({});
+  private nextOffset = 0;
+  private hasMore = true;
   private pointerStartX = 0;
   private pointerId: number | null = null;
 
@@ -47,6 +52,7 @@ export class DiscoverComponent {
     maxFame: [''],
     distance: [''],
     city: [''],
+    minCommonTags: [''],
     sort: [''],
     order: [{ value: 'ASC', disabled: true }]
   });
@@ -74,8 +80,7 @@ export class DiscoverComponent {
           this.preferencesForm.controls.order.disable({ emitEvent: false });
         }
       });
-    void this.loadDeck();
-    void this.loadPreferenceData();
+    void this.initialize();
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -87,7 +92,10 @@ export class DiscoverComponent {
   async loadDeck(): Promise<void> {
     this.loading.set(true);
     try {
-      this.candidates.set(await this.discovery.discover());
+      this.nextOffset = 0;
+      this.hasMore = true;
+      const page = await this.fetchPage();
+      this.candidates.set(page);
       this.index.set(0);
       await this.loadCurrent();
     } catch (error) {
@@ -95,6 +103,11 @@ export class DiscoverComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private async initialize(): Promise<void> {
+    await this.loadPreferenceData();
+    await this.loadDeck();
   }
 
   async openPreferences(): Promise<void> {
@@ -130,6 +143,11 @@ export class DiscoverComponent {
       this.toast.error('Minimum fame cannot be greater than maximum fame.');
       return;
     }
+    const minCommonTags = this.numberOrNull(value.minCommonTags);
+    if (minCommonTags != null && (!Number.isInteger(minCommonTags) || minCommonTags < 0)) {
+      this.toast.error('Minimum common interests must be a whole number of zero or more.');
+      return;
+    }
 
     this.preferencesSaving.set(true);
 
@@ -145,11 +163,17 @@ export class DiscoverComponent {
         ...(distance != null ? { distance } : {}),
         ...(city ? { city } : {}),
         ...(tags.length ? { tags } : {}),
+        // Persist this independently from the tag selection. The backend decides
+        // when it applies the threshold; omitting it here made edits disappear.
+        minCommonTags,
         ...(value.sort ? { sort: value.sort, order: value.order } : {})
       };
 
-      await this.discovery.saveDiscoveryPreferences(preferences);
-      const persisted = await this.discovery.discoveryPreferences();
+      const saved = await this.discovery.saveDiscoveryPreferences(preferences);
+      // Prefer the PUT response as the authoritative saved value. Some deployments
+      // use an eventually-consistent read model for the following GET.
+      const persisted = { ...preferences, ...saved };
+      this.activePreferences.set(persisted);
       this.applyPreferences(persisted);
       this.preferencesOpen.set(false);
       this.toast.success('Discovery preferences saved.');
@@ -230,7 +254,13 @@ export class DiscoverComponent {
   }
 
   private async loadCurrent(): Promise<void> {
-    while (this.index() < this.candidates().length) {
+    while (true) {
+      if (this.index() >= this.candidates().length) {
+        if (!this.hasMore) break;
+        const page = await this.fetchPage();
+        if (!page.length) break;
+        this.candidates.update(current => [...current, ...page]);
+      }
       const candidate = this.candidates()[this.index()];
       const id = candidate.id ?? candidate.userId;
       if (!id) {
@@ -247,6 +277,17 @@ export class DiscoverComponent {
     this.profile.set(null);
   }
 
+  private async fetchPage(): Promise<DiscoveryCard[]> {
+    const page = await this.discovery.discover({
+      ...this.activePreferences(),
+      limit: DISCOVERY_PAGE_SIZE,
+      offset: this.nextOffset
+    });
+    this.nextOffset += page.length;
+    this.hasMore = page.length === DISCOVERY_PAGE_SIZE;
+    return page;
+  }
+
   private async loadPreferenceData(): Promise<void> {
     this.preferencesLoading.set(true);
     try {
@@ -255,6 +296,7 @@ export class DiscoverComponent {
         this.interests.interests()
       ]);
       this.availableInterests.set(interests);
+      this.activePreferences.set(preferences);
       this.applyPreferences(preferences);
     } catch (error) {
       this.toast.apiError(error);
@@ -271,6 +313,7 @@ export class DiscoverComponent {
       maxFame: preferences.maxFame == null ? '' : String(preferences.maxFame),
       distance: preferences.distance == null ? '' : String(preferences.distance),
       city: preferences.city ?? '',
+      minCommonTags: preferences.minCommonTags == null ? '' : String(preferences.minCommonTags),
       sort: preferences.sort ?? '',
       order: preferences.order ?? 'ASC'
     });

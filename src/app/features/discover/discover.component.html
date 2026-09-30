@@ -139,6 +139,12 @@
                   </label>
                 }
               </div>
+              <label class="common-tags-field">
+                Minimum interests in common
+                <input type="number" formControlName="minCommonTags" min="0" step="1"
+                       placeholder="Any" [max]="preferenceTags().length || null" />
+                <small>Only applies when one or more interests are selected.</small>
+              </label>
             </fieldset>
 
             <fieldset>

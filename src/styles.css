@@ -2566,6 +2566,17 @@ a.username.active {
   display: inline-flex;
 }
 
+.common-tags-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+}
+
+.common-tags-field small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .preferences-form .modal-actions {
   margin-top: 0.25rem;
 }
