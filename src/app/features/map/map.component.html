@@ -30,5 +30,70 @@
     @if (loading()) {
       <span class="map-loading" aria-hidden="true">Loading…</span>
     }
+
+    @if (selected(); as picked) {
+      <aside class="map-card" role="dialog" aria-modal="false" [attr.aria-label]="'Profile of ' + picked.firstName">
+        <button type="button" class="map-card-close" (click)="closeCard()" aria-label="Close">
+          <app-icon name="x" [size]="18" />
+        </button>
+
+        @if (card(); as person) {
+          <div class="map-card-head">
+            <app-avatar class="map-card-avatar" [name]="person.username" [src]="person.avatarUrl" />
+            <div>
+              <h2>{{ person.age != null ? person.firstName + ', ' + person.age : person.firstName }}</h2>
+              <p class="map-card-meta">&#64;{{ person.username }}
+                @if (person.city) { · {{ person.city }} }
+              </p>
+              <p class="map-card-meta" [class.is-online]="picked.online">
+                {{ picked.online ? 'Online' : 'Offline' }}
+                @if (picked.distanceKm != null) {
+                  · {{ picked.distanceKm < 1 ? 'less than 1 km away' : picked.distanceKm + ' km away' }}
+                }
+              </p>
+            </div>
+          </div>
+
+          @if (person.connected) { <p class="match-banner">You matched with {{ person.firstName }}.</p> }
+          @else if (person.likesMe) { <p class="liked-you-banner">{{ person.firstName }} liked you.</p> }
+          @if (person.blocked) { <p class="block-notice">You blocked this user.</p> }
+          @else if (person.blockedByThem) { <p class="block-notice">This profile is unavailable.</p> }
+
+          @if (person.pictures.length) {
+            <div class="map-card-photos">
+              @for (picture of person.pictures.slice(0, 3); track picture.id) {
+                <img [src]="picture.url" [alt]="person.firstName + ' profile photo'" />
+              }
+            </div>
+          }
+
+          @if (person.biography) { <p class="map-card-bio">{{ person.biography }}</p> }
+
+          @if (person.interests.length) {
+            <div class="map-card-tags">
+              @for (interest of person.interests.slice(0, 6); track interest) {
+                <span class="map-card-tag">#{{ interest }}</span>
+              }
+            </div>
+          }
+
+          <div class="map-card-actions">
+            @if (!person.blocked && !person.blockedByThem) {
+              <button type="button" class="solid-button" (click)="toggleLike()" [disabled]="liking()">
+                {{ person.connected ? 'Disconnect' : person.likedByMe ? 'Unlike' : 'Like' }}
+              </button>
+            }
+            @if (person.connected && !person.blocked && !person.blockedByThem) {
+              <a class="ghost-button" [routerLink]="['/chat', person.id]">
+                <app-icon name="message" [size]="16" /> Message
+              </a>
+            }
+            <a class="ghost-button" [routerLink]="['/profile', person.id]">Full profile</a>
+          </div>
+        } @else if (cardLoading()) {
+          <p class="placeholder">Loading {{ picked.firstName }}'s profile…</p>
+        }
+      </aside>
+    }
   </div>
 </section>

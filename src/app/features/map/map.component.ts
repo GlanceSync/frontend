@@ -1,16 +1,18 @@
 import {
   Component, DestroyRef, ElementRef, NgZone, afterNextRender, computed, effect, inject, signal, viewChild
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import type * as Leaflet from 'leaflet';
 import { MapService } from '../../core/services/map/map.service';
 import { ProfileService } from '../../core/services/profile/profile.service';
+import { ActivityService } from '../../core/services/activity/activity.service';
 import { GeoError, GeoFix, GeolocationService } from '../../core/services/geo/geolocation.service';
 import { GeocodingService } from '../../core/services/geo/geocoding.service';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { MapUser } from '../../core/interfaces/map/MapUser';
 import { Profile } from '../../core/interfaces/user/Profile';
 import { avatarHue } from '../../core/utils/avatar-hue.util';
+import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
 type LeafletModule = typeof Leaflet;
@@ -25,16 +27,17 @@ const STREET_ZOOM = 14;
  */
 @Component({
   selector: 'app-map',
-  imports: [RouterLink, IconComponent],
-  templateUrl: './map.component.html'
+  imports: [RouterLink, AvatarComponent, IconComponent],
+  templateUrl: './map.component.html',
+  host: { '(document:keydown.escape)': 'closeCard()' }
 })
 export class MapComponent {
   private readonly mapService = inject(MapService);
   private readonly profiles = inject(ProfileService);
+  private readonly activity = inject(ActivityService);
   private readonly geo = inject(GeolocationService);
   private readonly geocoding = inject(GeocodingService);
   private readonly toast = inject(ToastService);
-  private readonly router = inject(Router);
   private readonly zone = inject(NgZone);
   private readonly canvas = viewChild.required<ElementRef<HTMLDivElement>>('canvas');
 
@@ -43,6 +46,12 @@ export class MapComponent {
   readonly loading = signal(true);
   readonly locating = signal(false);
   readonly locationNotice = signal<string | null>(null);
+
+  /** The person whose marker was clicked; their full profile loads into the side card. */
+  readonly selected = signal<MapUser | null>(null);
+  readonly card = signal<Profile | null>(null);
+  readonly cardLoading = signal(false);
+  readonly liking = signal(false);
 
   readonly shown = computed(() => this.onlineOnly() ? this.people().filter(person => person.online) : this.people());
   readonly summary = computed(() => {
@@ -61,6 +70,7 @@ export class MapComponent {
   private profile: Profile | null = null;
   private fix: GeoFix | null = null;
   private fetchSeq = 0;
+  private cardSeq = 0;
   private moveTimer?: ReturnType<typeof setTimeout>;
   private destroyed = false;
 
@@ -84,6 +94,49 @@ export class MapComponent {
 
   toggleOnlineOnly(): void {
     this.onlineOnly.update(value => !value);
+  }
+
+  closeCard(): void {
+    this.cardSeq++;
+    this.selected.set(null);
+    this.card.set(null);
+  }
+
+  async toggleLike(): Promise<void> {
+    const person = this.card();
+    if (!person || person.blocked || person.blockedByThem || this.liking()) return;
+    this.liking.set(true);
+    try {
+      const state = person.likedByMe
+        ? await this.activity.unlike(person.id)
+        : await this.activity.like(person.id);
+      // The card may have moved on to someone else while the request was in flight.
+      if (this.card()?.id === person.id) this.card.set({ ...person, ...state });
+      this.toast.success(state.connected ? `You matched with ${person.firstName}!`
+        : state.likedByMe ? 'Liked.' : 'Like removed.');
+    } catch (error) {
+      this.toast.apiError(error);
+    } finally {
+      this.liking.set(false);
+    }
+  }
+
+  private async select(person: MapUser): Promise<void> {
+    const seq = ++this.cardSeq;
+    this.selected.set(person);
+    this.card.set(null);
+    this.cardLoading.set(true);
+    try {
+      const profile = await this.profiles.profile(person.id);
+      if (seq === this.cardSeq) this.card.set(profile);
+    } catch (error) {
+      if (seq === this.cardSeq) {
+        this.toast.apiError(error);
+        this.selected.set(null);
+      }
+    } finally {
+      if (seq === this.cardSeq) this.cardLoading.set(false);
+    }
   }
 
   private async init(): Promise<void> {
@@ -127,6 +180,8 @@ export class MapComponent {
         map.setView([20, 0], 2);
       }
       map.on('moveend', () => this.zone.run(() => this.scheduleFetch()));
+      // Markers do not bubble their clicks up, so this only fires on the map itself.
+      map.on('click', () => this.zone.run(() => this.closeCard()));
       this.map = map;
     });
 
@@ -248,49 +303,17 @@ export class MapComponent {
         icon: this.avatarIcon(L, person),
         title: person.firstName,
         alt: `${person.firstName} on the map`
-      }).bindPopup(() => this.popup(person), { maxWidth: 260, className: 'map-popup-wrapper' })
+      }).on('click', () => this.zone.run(() => void this.select(person)))
     ));
   }
 
-  // Markers and popups are built from DOM nodes rather than HTML strings, so a name can
-  // never be read as markup.
+  // Markers are built from DOM nodes rather than HTML strings, so a name can never be
+  // read as markup.
 
   private avatarIcon(L: LeafletModule, person: MapUser): Leaflet.DivIcon {
     const avatar = this.avatar(person, 'map-avatar');
     if (person.online) avatar.classList.add('is-online');
-    return L.divIcon({ html: avatar, className: 'map-avatar-icon', iconSize: [44, 44], iconAnchor: [22, 22],
-      popupAnchor: [0, -22] });
-  }
-
-  private popup(person: MapUser): HTMLElement {
-    const root = element('div', 'map-popup');
-
-    const head = element('div', 'map-popup-head');
-    head.append(this.avatar(person, 'map-popup-avatar'));
-    const who = element('div');
-    who.append(element('strong', '', person.age != null ? `${person.firstName}, ${person.age}` : person.firstName));
-    const status = [person.online ? 'Online' : 'Offline'];
-    if (person.distanceKm != null) {
-      status.push(person.distanceKm < 1 ? 'less than 1 km away' : `${person.distanceKm} km away`);
-    }
-    who.append(element('span', person.online ? 'map-popup-meta is-online' : 'map-popup-meta', status.join(' · ')));
-    head.append(who);
-    root.append(head);
-
-    if (person.commonInterests.length) {
-      const tags = element('div', 'map-popup-tags');
-      person.commonInterests.slice(0, 4).forEach(name => tags.append(element('span', 'map-popup-tag', `#${name}`)));
-      root.append(tags);
-    }
-
-    const link = element('a', 'map-popup-link', 'View profile') as HTMLAnchorElement;
-    link.href = `/profile/${person.id}`;
-    link.addEventListener('click', event => {
-      event.preventDefault();
-      this.zone.run(() => void this.router.navigate(['/profile', person.id]));
-    });
-    root.append(link);
-    return root;
+    return L.divIcon({ html: avatar, className: 'map-avatar-icon', iconSize: [44, 44], iconAnchor: [22, 22] });
   }
 
   private avatar(person: MapUser, className: string): HTMLElement {
