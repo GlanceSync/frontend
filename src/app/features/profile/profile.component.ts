@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -14,7 +14,28 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
 const AVATAR_SIZE = 512;
+const GALLERY_SIZE = 1200;
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
+
+type PhotoTarget = 'avatar' | 'gallery';
+type PhotoFilter = 'none' | 'warm' | 'cool' | 'mono' | 'vivid';
+
+interface CitySearchResult {
+  place_id: number;
+  display_name: string;
+  name?: string;
+  lat: string;
+  lon: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+  };
+}
 
 @Component({
   selector: 'app-profile',
@@ -40,15 +61,28 @@ export class ProfileComponent {
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly dragging = signal(false);
+  readonly galleryDragging = signal(false);
   readonly locating = signal(false);
   readonly resolvingPlace = signal(false);
   readonly searchingCities = signal(false);
   readonly cityResults = signal<CitySearchResult[]>([]);
   readonly savingMapVisibility = signal(false);
   readonly pending = signal<{ blob: Blob; url: string } | null>(null);
+  readonly editorOpen = signal(false);
+  readonly editorTarget = signal<PhotoTarget>('gallery');
+  readonly editorRotation = signal(0);
+  readonly editorZoom = signal(1);
+  readonly editorX = signal(0);
+  readonly editorY = signal(0);
+  readonly editorFilter = signal<PhotoFilter>('none');
+  readonly editorSaving = signal(false);
+  readonly editorCanvas = viewChild<ElementRef<HTMLCanvasElement>>('editorCanvas');
   readonly onboarding = computed(() => !this.user()?.profileCompleted);
   /** The city whose coordinates came from a search result, so they are only sent with it. */
   private geocodedCity: string | null = null;
+  private editorBitmap: ImageBitmap | null = null;
+  private readonly citySearchCache = new Map<string, CitySearchResult[]>();
+  private lastNominatimRequestAt = 0;
 
   readonly profileForm = this.fb.nonNullable.group({
     gender: ['', Validators.required],
@@ -69,7 +103,10 @@ export class ProfileComponent {
   });
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.discardPending());
+    inject(DestroyRef).onDestroy(() => {
+      this.discardPending();
+      this.closeEditor();
+    });
     void this.load();
   }
 
@@ -304,7 +341,7 @@ export class ProfileComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) void this.prepare(file);
+    if (file) void this.openEditor(file, 'avatar');
   }
 
   onDragOver(event: DragEvent): void {
@@ -316,23 +353,27 @@ export class ProfileComponent {
     event.preventDefault();
     this.dragging.set(false);
     const file = event.dataTransfer?.files?.[0];
-    if (file) void this.prepare(file);
+    if (file) void this.openEditor(file, 'avatar');
   }
 
-  async uploadExtra(event: Event): Promise<void> {
+  onGalleryDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (this.profile()!.pictures.length < 5) this.galleryDragging.set(true);
+  }
+
+  onGalleryDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.galleryDragging.set(false);
+    if (this.profile()!.pictures.length >= 5) return;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) void this.openEditor(file, 'gallery');
+  }
+
+  uploadExtra(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file || !this.validImage(file)) return;
-    this.busy.set(true);
-    try {
-      this.updatePictures(await this.pictures.uploadPicture(file));
-      this.toast.success('Photo added.');
-    } catch (error) {
-      this.toast.apiError(error);
-    } finally {
-      this.busy.set(false);
-    }
+    if (file) void this.openEditor(file, 'gallery');
   }
 
   async makePrimary(picture: Picture): Promise<void> {
@@ -379,27 +420,108 @@ export class ProfileComponent {
     return true;
   }
 
-  private async prepare(file: File): Promise<void> {
+  async openEditor(file: File, target: PhotoTarget): Promise<void> {
     if (!this.validImage(file)) return;
-    let bitmap: ImageBitmap;
     try {
-      bitmap = await createImageBitmap(file);
+      this.editorBitmap?.close();
+      this.editorBitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
     } catch {
       this.toast.error('That image could not be read.');
       return;
     }
-    const side = Math.min(bitmap.width, bitmap.height);
-    const canvas = document.createElement('canvas');
-    canvas.width = AVATAR_SIZE;
-    canvas.height = AVATAR_SIZE;
+    this.editorTarget.set(target);
+    this.editorRotation.set(0);
+    this.editorZoom.set(1);
+    this.editorX.set(0);
+    this.editorY.set(0);
+    this.editorFilter.set('none');
+    this.editorOpen.set(true);
+    setTimeout(() => this.renderEditor());
+  }
+
+  updateEditor(): void { this.renderEditor(); }
+
+  rotateEditor(direction: -1 | 1): void {
+    this.editorRotation.update(value => (value + direction * 90 + 360) % 360);
+    this.renderEditor();
+  }
+
+  async applyEditor(): Promise<void> {
+    const bitmap = this.editorBitmap;
+    if (!bitmap || this.editorSaving()) return;
+    this.editorSaving.set(true);
+    try {
+      const size = this.editorTarget() === 'avatar' ? AVATAR_SIZE : GALLERY_SIZE;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      this.drawEditedImage(canvas, bitmap);
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+      if (!blob) throw new Error('Could not create the edited image.');
+
+      if (this.editorTarget() === 'avatar') {
+        this.discardPending();
+        this.pending.set({ blob, url: URL.createObjectURL(blob) });
+        this.closeEditor();
+      } else {
+        this.updatePictures(await this.pictures.uploadPicture(blob));
+        this.closeEditor();
+        this.toast.success('Photo added to your gallery.');
+      }
+    } catch (error) {
+      this.toast.apiError(error);
+    } finally {
+      this.editorSaving.set(false);
+    }
+  }
+
+  closeEditor(): void {
+    this.editorBitmap?.close();
+    this.editorBitmap = null;
+    this.editorOpen.set(false);
+  }
+
+  private renderEditor(): void {
+    const canvas = this.editorCanvas()?.nativeElement;
+    const bitmap = this.editorBitmap;
+    if (canvas && bitmap) this.drawEditedImage(canvas, bitmap);
+  }
+
+  private drawEditedImage(canvas: HTMLCanvasElement, bitmap: ImageBitmap): void {
     const context = canvas.getContext('2d')!;
+    const size = canvas.width;
+    const quarterTurn = this.editorRotation() % 180 !== 0;
+    const rotatedWidth = quarterTurn ? bitmap.height : bitmap.width;
+    const rotatedHeight = quarterTurn ? bitmap.width : bitmap.height;
+    const scale = Math.max(size / rotatedWidth, size / rotatedHeight) * this.editorZoom();
+    const overflowX = Math.max(0, rotatedWidth * scale - size);
+    const overflowY = Math.max(0, rotatedHeight * scale - size);
+
+    context.save();
+    context.clearRect(0, 0, size, size);
+    context.fillStyle = '#111';
+    context.fillRect(0, 0, size, size);
+    context.filter = this.canvasFilter(this.editorFilter());
+    context.translate(
+      size / 2 + (this.editorX() / 100) * overflowX / 2,
+      size / 2 + (this.editorY() / 100) * overflowY / 2
+    );
+    context.rotate(this.editorRotation() * Math.PI / 180);
+    context.scale(scale, scale);
+    context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
-    context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
-    bitmap.close();
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-    if (!blob) return;
-    this.discardPending();
-    this.pending.set({ blob, url: URL.createObjectURL(blob) });
+    context.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+    context.restore();
+  }
+
+  private canvasFilter(filter: PhotoFilter): string {
+    switch (filter) {
+      case 'warm': return 'sepia(.22) saturate(1.2) brightness(1.04)';
+      case 'cool': return 'saturate(.9) hue-rotate(175deg) hue-rotate(180deg)';
+      case 'mono': return 'grayscale(1) contrast(1.08)';
+      case 'vivid': return 'saturate(1.45) contrast(1.08)';
+      default: return 'none';
+    }
   }
 
   private discardPending(): void {

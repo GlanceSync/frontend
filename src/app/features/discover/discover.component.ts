@@ -1,6 +1,7 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DiscoveryService } from '../../core/services/discovery/discovery.service';
 import { ProfileService } from '../../core/services/profile/profile.service';
 import { InterestService } from '../../core/services/interest/interest.service';
@@ -8,6 +9,8 @@ import { ActivityService } from '../../core/services/activity/activity.service';
 import { DiscoveryCard, DiscoveryPreferences, Interest, Profile } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+
+const DISCOVERY_PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-discover',
@@ -24,6 +27,9 @@ export class DiscoverComponent {
 
   private readonly candidates = signal<DiscoveryCard[]>([]);
   private readonly index = signal(0);
+  private readonly activePreferences = signal<DiscoveryPreferences>({});
+  private nextOffset = 0;
+  private hasMore = true;
   private pointerStartX = 0;
   private pointerId: number | null = null;
 
@@ -46,8 +52,9 @@ export class DiscoverComponent {
     maxFame: [''],
     distance: [''],
     city: [''],
+    minCommonTags: [''],
     sort: [''],
-    order: ['ASC']
+    order: [{ value: 'ASC', disabled: true }]
   });
 
   readonly cardTransform = computed(() => {
@@ -64,8 +71,16 @@ export class DiscoverComponent {
   });
 
   constructor() {
-    void this.loadDeck();
-    void this.loadPreferenceData();
+    this.preferencesForm.controls.sort.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(sort => {
+        if (sort) {
+          this.preferencesForm.controls.order.enable({ emitEvent: false });
+        } else {
+          this.preferencesForm.controls.order.disable({ emitEvent: false });
+        }
+      });
+    void this.initialize();
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -77,7 +92,10 @@ export class DiscoverComponent {
   async loadDeck(): Promise<void> {
     this.loading.set(true);
     try {
-      this.candidates.set(await this.discovery.discover());
+      this.nextOffset = 0;
+      this.hasMore = true;
+      const page = await this.fetchPage();
+      this.candidates.set(page);
       this.index.set(0);
       await this.loadCurrent();
     } catch (error) {
@@ -85,6 +103,11 @@ export class DiscoverComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private async initialize(): Promise<void> {
+    await this.loadPreferenceData();
+    await this.loadDeck();
   }
 
   async openPreferences(): Promise<void> {
@@ -120,18 +143,38 @@ export class DiscoverComponent {
       this.toast.error('Minimum fame cannot be greater than maximum fame.');
       return;
     }
+    const minCommonTags = this.numberOrNull(value.minCommonTags);
+    if (minCommonTags != null && (!Number.isInteger(minCommonTags) || minCommonTags < 0)) {
+      this.toast.error('Minimum common interests must be a whole number of zero or more.');
+      return;
+    }
 
     this.preferencesSaving.set(true);
+
     try {
-      const saved = await this.discovery.saveDiscoveryPreferences({
-        minAge, maxAge, minFame, maxFame,
-        distance: this.numberOrNull(value.distance),
-        city: value.city.trim() || null,
-        tags: this.preferenceTags(),
-        sort: value.sort || null,
-        order: value.sort ? value.order : null
-      });
-      this.applyPreferences(saved);
+      const distance = this.numberOrNull(value.distance);
+      const city = value.city.trim();
+      const tags = this.preferenceTags();
+      const preferences: DiscoveryPreferences = {
+        ...(minAge != null ? { minAge } : {}),
+        ...(maxAge != null ? { maxAge } : {}),
+        ...(minFame != null ? { minFame } : {}),
+        ...(maxFame != null ? { maxFame } : {}),
+        ...(distance != null ? { distance } : {}),
+        ...(city ? { city } : {}),
+        ...(tags.length ? { tags } : {}),
+        // Persist this independently from the tag selection. The backend decides
+        // when it applies the threshold; omitting it here made edits disappear.
+        minCommonTags,
+        ...(value.sort ? { sort: value.sort, order: value.order } : {})
+      };
+
+      const saved = await this.discovery.saveDiscoveryPreferences(preferences);
+      // Prefer the PUT response as the authoritative saved value. Some deployments
+      // use an eventually-consistent read model for the following GET.
+      const persisted = { ...preferences, ...saved };
+      this.activePreferences.set(persisted);
+      this.applyPreferences(persisted);
       this.preferencesOpen.set(false);
       this.toast.success('Discovery preferences saved.');
       await this.loadDeck();
@@ -211,7 +254,13 @@ export class DiscoverComponent {
   }
 
   private async loadCurrent(): Promise<void> {
-    while (this.index() < this.candidates().length) {
+    while (true) {
+      if (this.index() >= this.candidates().length) {
+        if (!this.hasMore) break;
+        const page = await this.fetchPage();
+        if (!page.length) break;
+        this.candidates.update(current => [...current, ...page]);
+      }
       const candidate = this.candidates()[this.index()];
       const id = candidate.id ?? candidate.userId;
       if (!id) {
@@ -228,6 +277,17 @@ export class DiscoverComponent {
     this.profile.set(null);
   }
 
+  private async fetchPage(): Promise<DiscoveryCard[]> {
+    const page = await this.discovery.discover({
+      ...this.activePreferences(),
+      limit: DISCOVERY_PAGE_SIZE,
+      offset: this.nextOffset
+    });
+    this.nextOffset += page.length;
+    this.hasMore = page.length === DISCOVERY_PAGE_SIZE;
+    return page;
+  }
+
   private async loadPreferenceData(): Promise<void> {
     this.preferencesLoading.set(true);
     try {
@@ -236,6 +296,7 @@ export class DiscoverComponent {
         this.interests.interests()
       ]);
       this.availableInterests.set(interests);
+      this.activePreferences.set(preferences);
       this.applyPreferences(preferences);
     } catch (error) {
       this.toast.apiError(error);
@@ -252,15 +313,16 @@ export class DiscoverComponent {
       maxFame: preferences.maxFame == null ? '' : String(preferences.maxFame),
       distance: preferences.distance == null ? '' : String(preferences.distance),
       city: preferences.city ?? '',
+      minCommonTags: preferences.minCommonTags == null ? '' : String(preferences.minCommonTags),
       sort: preferences.sort ?? '',
       order: preferences.order ?? 'ASC'
     });
     this.preferenceTags.set(preferences.tags ?? []);
   }
 
-  private numberOrNull(value: string): number | null {
-    if (!value.trim()) return null;
-    const number = Number(value);
+  private numberOrNull(value: string | number | null | undefined): number | null {
+    if (value == null || (typeof value === 'string' && !value.trim())) return null;
+    const number = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(number) ? number : null;
   }
 

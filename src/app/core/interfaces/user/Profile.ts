@@ -83,6 +83,7 @@ export interface DiscoveryPreferences {
   distance?: number | null;
   city?: string | null;
   tags?: string[] | null;
+  minCommonTags?: number | null;
   sort?: string | null;
   order?: string | null;
 }

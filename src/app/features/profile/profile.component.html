@@ -141,8 +141,8 @@
       <section class="profile-section">
         <div class="section-heading-row">
           <div>
-            <h2>More photos</h2>
-            <p class="meta-line">Add up to five photos. Choose which one appears as your avatar.</p>
+            <h2>Photo gallery</h2>
+            <p class="meta-line">Add up to five photos. Crop and style each one before uploading.</p>
           </div>
           @if (me.pictures.length < 5) {
             <label class="ghost-button" for="gallery-file">Add photo</label>
@@ -150,19 +150,36 @@
                    accept="image/jpeg,image/png,image/webp" (change)="uploadExtra($event)" />
           }
         </div>
-        <div class="picture-grid">
-          @for (picture of me.pictures; track picture.id) {
-            <article class="picture-card">
-              <img [src]="picture.url" alt="Profile photo" />
-              <div class="picture-actions">
-                @if (picture.profile) {
-                  <span class="status">Profile</span>
-                } @else {
-                  <button type="button" class="link-button" (click)="makePrimary(picture)">Make profile</button>
-                }
-                <button type="button" class="link-button danger" (click)="removePicture(picture)">Remove</button>
-              </div>
-            </article>
+        <div class="gallery-drop-zone" [class.dragging]="galleryDragging()"
+             (dragover)="onGalleryDragOver($event)" (dragleave)="galleryDragging.set(false)"
+             (drop)="onGalleryDrop($event)">
+          @if (!me.pictures.length) {
+            <label class="gallery-empty" for="gallery-file">
+              <app-icon name="upload" [size]="28" />
+              <strong>Drop a photo here</strong>
+              <span>or click to choose one</span>
+            </label>
+          } @else {
+            <div class="picture-grid">
+              @for (picture of me.pictures; track picture.id) {
+                <article class="picture-card">
+                  <img [src]="picture.url" alt="Profile photo" />
+                  <div class="picture-actions">
+                    @if (picture.profile) {
+                      <span class="status">Profile</span>
+                    } @else {
+                      <button type="button" class="link-button" (click)="makePrimary(picture)">Make profile</button>
+                    }
+                    <button type="button" class="link-button danger" (click)="removePicture(picture)">Remove</button>
+                  </div>
+                </article>
+              }
+            </div>
+            @if (me.pictures.length < 5) {
+              <label class="gallery-drop-prompt" for="gallery-file">
+                <app-icon name="upload" [size]="18" /> Drop another photo here or browse
+              </label>
+            }
           }
         </div>
       </section>
@@ -184,5 +201,64 @@
       </section>
     }
     }
+  }
+
+  @if (editorOpen()) {
+    <div class="modal-backdrop photo-editor-backdrop" (click)="closeEditor()">
+      <div class="modal photo-editor" role="dialog" aria-modal="true" aria-labelledby="photo-editor-title"
+           (click)="$event.stopPropagation()">
+        <div class="photo-editor-heading">
+          <div>
+            <h2 id="photo-editor-title">Edit photo</h2>
+            <p class="modal-text">Adjust the square crop, rotation and look.</p>
+          </div>
+          <button type="button" class="icon-button" aria-label="Close photo editor" (click)="closeEditor()">
+            <app-icon name="x" [size]="18" />
+          </button>
+        </div>
+
+        <canvas #editorCanvas class="photo-editor-canvas" width="600" height="600"></canvas>
+
+        <div class="photo-editor-controls">
+          <label>
+            Zoom
+            <input type="range" min="1" max="3" step="0.05" [value]="editorZoom()"
+                   (input)="editorZoom.set(+$any($event.target).value); updateEditor()" />
+          </label>
+          <label>
+            Horizontal crop
+            <input type="range" min="-100" max="100" step="1" [value]="editorX()"
+                   (input)="editorX.set(+$any($event.target).value); updateEditor()" />
+          </label>
+          <label>
+            Vertical crop
+            <input type="range" min="-100" max="100" step="1" [value]="editorY()"
+                   (input)="editorY.set(+$any($event.target).value); updateEditor()" />
+          </label>
+          <label>
+            Filter
+            <select [value]="editorFilter()"
+                    (change)="editorFilter.set($any($event.target).value); updateEditor()">
+              <option value="none">Original</option>
+              <option value="warm">Warm</option>
+              <option value="cool">Cool</option>
+              <option value="mono">Black &amp; white</option>
+              <option value="vivid">Vivid</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="photo-editor-toolbar">
+          <button type="button" class="ghost-button" (click)="rotateEditor(-1)">↶ Rotate left</button>
+          <button type="button" class="ghost-button" (click)="rotateEditor(1)">Rotate right ↷</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="ghost-button" (click)="closeEditor()" [disabled]="editorSaving()">Cancel</button>
+          <button type="button" class="solid-button" (click)="applyEditor()" [disabled]="editorSaving()">
+            {{ editorSaving() ? 'Saving…' : (editorTarget() === 'avatar' ? 'Use photo' : 'Add to gallery') }}
+          </button>
+        </div>
+      </div>
+    </div>
   }
 </section>
