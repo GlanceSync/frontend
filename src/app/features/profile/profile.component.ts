@@ -20,23 +20,6 @@ const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 type PhotoTarget = 'avatar' | 'gallery';
 type PhotoFilter = 'none' | 'warm' | 'cool' | 'mono' | 'vivid';
 
-interface CitySearchResult {
-  place_id: number;
-  display_name: string;
-  name?: string;
-  lat: string;
-  lon: string;
-  address?: {
-    city?: string;
-    town?: string;
-    village?: string;
-    municipality?: string;
-    county?: string;
-    state?: string;
-    country?: string;
-  };
-}
-
 @Component({
   selector: 'app-profile',
   imports: [ReactiveFormsModule, DecimalPipe, AvatarComponent, IconComponent],
@@ -81,8 +64,6 @@ export class ProfileComponent {
   /** The city whose coordinates came from a search result, so they are only sent with it. */
   private geocodedCity: string | null = null;
   private editorBitmap: ImageBitmap | null = null;
-  private readonly citySearchCache = new Map<string, CitySearchResult[]>();
-  private lastNominatimRequestAt = 0;
 
   readonly profileForm = this.fb.nonNullable.group({
     gender: ['', Validators.required],
