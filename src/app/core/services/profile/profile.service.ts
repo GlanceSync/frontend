@@ -34,9 +34,14 @@ export class ProfileService {
     source: LocationSource;
     latitude?: number;
     longitude?: number;
+    accuracy?: number;
     city?: string;
   }): Promise<Profile> {
     return firstValueFrom(this.http.put<Profile>('/api/users/me/location', body));
+  }
+
+  updateMapVisibility(showOnMap: boolean): Promise<Profile> {
+    return firstValueFrom(this.http.put<Profile>('/api/users/me/map-visibility', { showOnMap }));
   }
 
   account(): Promise<Account> {
