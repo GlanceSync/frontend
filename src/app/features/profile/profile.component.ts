@@ -1,14 +1,15 @@
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth/auth.service';
 import { ProfileService } from '../../core/services/profile/profile.service';
 import { PictureService } from '../../core/services/picture/picture.service';
 import { InterestService } from '../../core/services/interest/interest.service';
 import { Account, Interest, Picture, Profile } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
+import { GeoError, GeolocationService } from '../../core/services/geo/geolocation.service';
+import { CitySearchResult, GeocodingService } from '../../core/services/geo/geocoding.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
@@ -19,26 +20,9 @@ const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 type PhotoTarget = 'avatar' | 'gallery';
 type PhotoFilter = 'none' | 'warm' | 'cool' | 'mono' | 'vivid';
 
-interface CitySearchResult {
-  place_id: number;
-  display_name: string;
-  name?: string;
-  lat: string;
-  lon: string;
-  address?: {
-    city?: string;
-    town?: string;
-    village?: string;
-    municipality?: string;
-    county?: string;
-    state?: string;
-    country?: string;
-  };
-}
-
 @Component({
   selector: 'app-profile',
-  imports: [ReactiveFormsModule, AvatarComponent, IconComponent],
+  imports: [ReactiveFormsModule, DecimalPipe, AvatarComponent, IconComponent],
   templateUrl: './profile.component.html'
 })
 export class ProfileComponent {
@@ -49,7 +33,8 @@ export class ProfileComponent {
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
-  private readonly http = inject(HttpClient);
+  private readonly geo = inject(GeolocationService);
+  private readonly geocoding = inject(GeocodingService);
 
   readonly user = this.auth.currentUser;
   readonly profile = signal<Profile | null>(null);
@@ -64,6 +49,7 @@ export class ProfileComponent {
   readonly resolvingPlace = signal(false);
   readonly searchingCities = signal(false);
   readonly cityResults = signal<CitySearchResult[]>([]);
+  readonly savingMapVisibility = signal(false);
   readonly pending = signal<{ blob: Blob; url: string } | null>(null);
   readonly editorOpen = signal(false);
   readonly editorTarget = signal<PhotoTarget>('gallery');
@@ -75,9 +61,9 @@ export class ProfileComponent {
   readonly editorSaving = signal(false);
   readonly editorCanvas = viewChild<ElementRef<HTMLCanvasElement>>('editorCanvas');
   readonly onboarding = computed(() => !this.user()?.profileCompleted);
+  /** The city whose coordinates came from a search result, so they are only sent with it. */
+  private geocodedCity: string | null = null;
   private editorBitmap: ImageBitmap | null = null;
-  private readonly citySearchCache = new Map<string, CitySearchResult[]>();
-  private lastNominatimRequestAt = 0;
 
   readonly profileForm = this.fb.nonNullable.group({
     gender: ['', Validators.required],
@@ -87,7 +73,8 @@ export class ProfileComponent {
     locationSource: ['MANUAL', Validators.required],
     city: ['', [Validators.maxLength(100)]],
     latitude: [null as number | null],
-    longitude: [null as number | null]
+    longitude: [null as number | null],
+    accuracy: [null as number | null]
   });
 
   readonly accountForm = this.fb.nonNullable.group({
@@ -125,8 +112,10 @@ export class ProfileComponent {
         locationSource: profile.locationSource ?? 'MANUAL',
         city: profile.city ?? '',
         latitude: profile.latitude ?? null,
-        longitude: profile.longitude ?? null
+        longitude: profile.longitude ?? null,
+        accuracy: profile.locationAccuracy ?? null
       });
+      this.geocodedCity = profile.locationSource === 'MANUAL' && profile.latitude != null ? profile.city ?? null : null;
       this.accountForm.patchValue(account);
     } catch (error) {
       this.toast.apiError(error);
@@ -181,10 +170,17 @@ export class ProfileComponent {
       if (values.locationSource === 'GPS') {
         await this.profiles.updateLocation({
           source: 'GPS', latitude: values.latitude!, longitude: values.longitude!,
-          city: values.city.trim() || undefined
+          accuracy: values.accuracy ?? undefined, city: values.city.trim() || undefined
         });
       } else {
-        await this.profiles.updateLocation({ source: 'MANUAL', city: values.city.trim() });
+        // A city picked from the search results carries its coordinates, which puts the
+        // person on the map; a city typed by hand has none.
+        const city = values.city.trim();
+        const geocoded = city === this.geocodedCity && values.latitude != null && values.longitude != null;
+        await this.profiles.updateLocation({
+          source: 'MANUAL', city,
+          ...(geocoded ? { latitude: values.latitude!, longitude: values.longitude! } : {})
+        });
       }
       await this.interests.replaceInterests(names);
       const updated = await this.profiles.myProfile();
@@ -236,30 +232,35 @@ export class ProfileComponent {
     }
   }
 
-  useCurrentLocation(): void {
-    if (!navigator.geolocation) {
-      this.toast.error('Location is not available in this browser.');
-      return;
-    }
+  async useCurrentLocation(): Promise<void> {
     this.locating.set(true);
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        this.profileForm.patchValue({
-          locationSource: 'GPS',
-          latitude,
-          longitude
-        });
-        this.locating.set(false);
-        void this.resolvePlace(latitude, longitude);
-      },
-      () => {
-        this.locating.set(false);
-        this.toast.error('We could not access your location. You can enter a city instead.');
-      },
-      { enableHighAccuracy: false, timeout: 10_000 }
-    );
+    try {
+      const fix = await this.geo.locate();
+      this.profileForm.patchValue({
+        locationSource: 'GPS',
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        accuracy: fix.accuracy
+      });
+      this.locating.set(false);
+      void this.resolvePlace(fix.latitude, fix.longitude, fix.accuracy);
+    } catch (error) {
+      this.locating.set(false);
+      const reason = error instanceof GeoError ? error.message : 'We could not access your location.';
+      this.toast.error(`${reason} You can enter a city instead.`);
+    }
+  }
+
+  async toggleMapVisibility(showOnMap: boolean): Promise<void> {
+    this.savingMapVisibility.set(true);
+    try {
+      this.profile.set(await this.profiles.updateMapVisibility(showOnMap));
+      this.toast.success(showOnMap ? 'People can now see you on the map.' : 'You are hidden from the map.');
+    } catch (error) {
+      this.toast.apiError(error);
+    } finally {
+      this.savingMapVisibility.set(false);
+    }
   }
 
   async searchCities(): Promise<void> {
@@ -269,31 +270,9 @@ export class ProfileComponent {
       return;
     }
 
-    const cacheKey = query.toLocaleLowerCase();
-    const cached = this.citySearchCache.get(cacheKey);
-    if (cached) {
-      this.cityResults.set(cached);
-      if (!cached.length) this.toast.error('No matching cities were found.');
-      return;
-    }
-
     this.searchingCities.set(true);
     try {
-      await this.respectNominatimRateLimit();
-      const results = await firstValueFrom(this.http.get<CitySearchResult[]>(
-        'https://nominatim.openstreetmap.org/search',
-        {
-          params: {
-            format: 'jsonv2',
-            q: query,
-            limit: '5',
-            addressdetails: '1',
-            layer: 'address',
-            featureType: 'settlement'
-          }
-        }
-      ));
-      this.citySearchCache.set(cacheKey, results);
+      const results = await this.geocoding.searchCities(query);
       this.cityResults.set(results);
       if (!results.length) this.toast.error('No matching cities were found. Try including the country.');
     } catch {
@@ -303,63 +282,40 @@ export class ProfileComponent {
     }
   }
 
+  cityName(result: CitySearchResult): string {
+    return GeocodingService.cityName(result);
+  }
+
   selectCity(result: CitySearchResult): void {
-    const address = result.address;
-    const city = address?.city ?? address?.town ?? address?.village
-      ?? address?.municipality ?? result.name ?? result.display_name.split(',')[0];
+    const city = GeocodingService.cityName(result);
     this.profileForm.patchValue({
       locationSource: 'MANUAL',
       city,
       latitude: Number(result.lat),
-      longitude: Number(result.lon)
+      longitude: Number(result.lon),
+      accuracy: null
     });
+    this.geocodedCity = city;
     this.cityResults.set([]);
     this.toast.success(`City selected: ${city}.`);
   }
 
-  private async resolvePlace(latitude: number, longitude: number): Promise<void> {
+  private async resolvePlace(latitude: number, longitude: number, accuracy: number): Promise<void> {
+    const precision = `accurate to about ${Math.round(accuracy)} m`;
     this.resolvingPlace.set(true);
     try {
-      await this.respectNominatimRateLimit();
-      const result = await firstValueFrom(this.http.get<{
-        display_name?: string;
-        address?: {
-          city?: string;
-          town?: string;
-          village?: string;
-          municipality?: string;
-          county?: string;
-          state?: string;
-        };
-      }>('https://nominatim.openstreetmap.org/reverse', {
-        params: {
-          format: 'jsonv2',
-          lat: String(latitude),
-          lon: String(longitude),
-          zoom: '10',
-          addressdetails: '1'
-        }
-      }));
-      const address = result.address;
-      const place = address?.city ?? address?.town ?? address?.village
-        ?? address?.municipality ?? address?.county ?? address?.state;
+      const place = await this.geocoding.placeName(latitude, longitude);
       if (place) {
         this.profileForm.patchValue({ city: place });
-        this.toast.success(`Location found: ${place}.`);
+        this.toast.success(`Location found: ${place}, ${precision}.`);
       } else {
-        this.toast.success('Current location added. Enter the nearest city if needed.');
+        this.toast.success(`Current location added, ${precision}. Enter the nearest city if needed.`);
       }
     } catch {
-      this.toast.success('Current location added. Enter the nearest city if needed.');
+      this.toast.success(`Current location added, ${precision}. Enter the nearest city if needed.`);
     } finally {
       this.resolvingPlace.set(false);
     }
-  }
-
-  private async respectNominatimRateLimit(): Promise<void> {
-    const wait = Math.max(0, 1000 - (Date.now() - this.lastNominatimRequestAt));
-    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
-    this.lastNominatimRequestAt = Date.now();
   }
 
   onFileChosen(event: Event): void {
