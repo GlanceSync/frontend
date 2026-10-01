@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth/auth.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ToastService } from '../../../core/services/toast/toast.service';
+import { OAuthButtonsComponent } from '../oauth-buttons/oauth-buttons.component';
 
 /** Mirrors the server's confirmation check so the user gets feedback before submitting. */
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
@@ -14,7 +15,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, IconComponent],
+  imports: [ReactiveFormsModule, RouterLink, IconComponent, OAuthButtonsComponent],
   templateUrl: './register.component.html'
 })
 export class RegisterComponent {

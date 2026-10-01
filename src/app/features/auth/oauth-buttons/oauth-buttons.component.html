@@ -1,0 +1,24 @@
+@if (providers().length) {
+  <div class="auth-divider"><span>or</span></div>
+  <div class="oauth-options" aria-label="Social sign-in options">
+    @for (provider of providers(); track provider) {
+      <button type="button" class="oauth-button oauth-{{ provider }}" (click)="start(provider)">
+        <span class="oauth-mark" aria-hidden="true">
+          @if (logo(provider); as logoUrl) {
+            <img [src]="logoUrl" alt="" />
+          } @else {
+            {{ mark(provider) }}
+          }
+        </span>
+        <span>{{ mode() === 'register' ? 'Continue' : 'Sign in' }} with {{ label(provider) }}</span>
+      </button>
+    }
+  </div>
+  <p class="oauth-note">
+    {{ mode() === 'register' ? 'An account will be created if this is your first time.' : 'New here? Your account will be created automatically.' }}
+  </p>
+} @else if (loading()) {
+  <p class="oauth-loading">Loading other sign-in options…</p>
+} @else if (unavailable()) {
+  <p class="oauth-loading">Other sign-in options are temporarily unavailable.</p>
+}

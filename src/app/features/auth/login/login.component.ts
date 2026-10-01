@@ -5,10 +5,11 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth/auth.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ToastService } from '../../../core/services/toast/toast.service';
+import { OAuthButtonsComponent } from '../oauth-buttons/oauth-buttons.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, IconComponent],
+  imports: [ReactiveFormsModule, RouterLink, IconComponent, OAuthButtonsComponent],
   templateUrl: './login.component.html'
 })
 export class LoginComponent {
@@ -37,6 +38,13 @@ export class LoginComponent {
     // Set after a successful registration redirect, so the user knows to check their inbox.
     if (params.get('registered') === '1') {
       this.toast.success('Account created. Check your inbox and open the link we sent to confirm your email.');
+    }
+
+    const oauthError = params.get('oauth_error');
+    if (oauthError === 'unavailable') {
+      this.toast.error('That sign-in provider is not available right now.');
+    } else if (oauthError) {
+      this.toast.error('We could not complete that sign-in. Please try again.');
     }
 
     // Set by the server's redirect after the link in the verification email is opened.
