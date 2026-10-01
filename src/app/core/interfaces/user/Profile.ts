@@ -34,6 +34,8 @@ export interface Profile {
   likedByMe?: boolean | null;
   likesMe?: boolean | null;
   connected?: boolean | null;
+  blocked?: boolean | null;
+  blockedByThem?: boolean | null;
 }
 
 export interface Account {

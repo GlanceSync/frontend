@@ -11,19 +11,58 @@
           @if (person.city) { · {{ person.city }} }
           @if (person.distanceKm != null) { · {{ person.distanceKm }} km away }
         </p>
+        <p class="profile-presence" [class.online]="isOnline()">
+          <span class="dot" [class.dot-online]="isOnline()" aria-hidden="true"></span>
+          @if (isOnline()) {
+            Online now
+          } @else {
+            @if (lastSeenAt(); as lastSeen) {
+              Last connected {{ when(lastSeen) }}
+            } @else {
+              Offline
+            }
+          }
+        </p>
         <div class="profile-actions">
-          <button type="button" class="solid-button" (click)="toggleLike()" [disabled]="busy()">
-            {{ person.likedByMe ? 'Unlike' : 'Like' }}
-          </button>
-          <a class="ghost-button" [routerLink]="['/chat', person.id]">
-            <app-icon name="message" [size]="16" /> Message
-          </a>
+          @if (!person.blocked && !person.blockedByThem) {
+            <button type="button" class="solid-button" (click)="toggleLike()" [disabled]="busy()">
+              {{ person.connected ? 'Disconnect' : person.likedByMe ? 'Unlike' : 'Like' }}
+            </button>
+          }
+          @if (person.connected && !person.blocked && !person.blockedByThem) {
+            <a class="ghost-button" [routerLink]="['/chat', person.id]">
+              <app-icon name="message" [size]="16" /> Message
+            </a>
+          }
           <button type="button" class="ghost-button danger" (click)="reportOpen.set(true)">Report</button>
+          <button type="button" class="ghost-button danger" [disabled]="busy()"
+                  (click)="person.blocked ? toggleBlock() : blockOpen.set(true)">
+            <app-icon [name]="person.blocked ? 'unblock' : 'block'" [size]="16" />
+            {{ person.blocked ? 'Unblock' : 'Block' }}
+          </button>
         </div>
       </div>
     </div>
 
     @if (person.connected) { <p class="match-banner">You matched with {{ person.firstName }}.</p> }
+    @else if (person.likesMe) { <p class="liked-you-banner">{{ person.firstName }} liked you.</p> }
+    @if (person.blocked) { <p class="block-notice">You blocked this user. Likes and messaging are disabled.</p> }
+    @else if (person.blockedByThem) { <p class="block-notice">This profile is unavailable for likes and messaging.</p> }
+
+    <dl class="public-profile-details">
+      <div>
+        <dt>Fame rating</dt>
+        <dd>{{ person.fameRating }}</dd>
+      </div>
+      <div>
+        <dt>Gender</dt>
+        <dd>{{ genderLabel(person.gender) }}</dd>
+      </div>
+      <div>
+        <dt>Interested in</dt>
+        <dd>{{ preferenceLabel(person.sexualPreference) }}</dd>
+      </div>
+    </dl>
     <p class="profile-biography">{{ person.biography || 'No biography yet.' }}</p>
     <div class="interest-list">
       @for (interest of person.interests; track interest) { <span class="interest-chip">{{ interest }}</span> }
@@ -43,6 +82,23 @@
           <div class="modal-actions">
             <button type="button" class="ghost-button" (click)="reportOpen.set(false)">Cancel</button>
             <button type="button" class="solid-button danger" (click)="report()" [disabled]="busy()">Send report</button>
+          </div>
+        </div>
+      </div>
+    }
+    @if (blockOpen()) {
+      <div class="modal-backdrop" (click)="blockOpen.set(false)">
+        <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="block-title"
+             aria-describedby="block-description" (click)="$event.stopPropagation()">
+          <h2 id="block-title">Block {{ person.username }}?</h2>
+          <p id="block-description" class="modal-text">
+            They will no longer appear in discovery or send you notifications. Any chat between you will be disabled.
+          </p>
+          <div class="modal-actions">
+            <button type="button" class="ghost-button" (click)="blockOpen.set(false)">Cancel</button>
+            <button type="button" class="solid-button danger" (click)="toggleBlock()" [disabled]="busy()">
+              Block user
+            </button>
           </div>
         </div>
       </div>
