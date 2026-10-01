@@ -4,10 +4,16 @@
       <h1>Discover</h1>
       <p class="subtitle">Swipe right to like, or left to pass.</p>
     </div>
-    <button type="button" class="ghost-button" (click)="openPreferences()">
-      <app-icon name="more" [size]="18" />
-      <span>Preferences</span>
-    </button>
+    <div class="discover-actions">
+      <a routerLink="/map" class="ghost-button">
+        <app-icon name="map-pin" [size]="18" />
+        <span>Map view</span>
+      </a>
+      <button type="button" class="ghost-button" (click)="openPreferences()">
+        <app-icon name="more" [size]="18" />
+        <span>Preferences</span>
+      </button>
+    </div>
   </header>
 
   @if (loading()) {

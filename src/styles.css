@@ -2716,6 +2716,331 @@ a.username.active {
   }
 }
 
+/* ---------- Map ---------- */
+
+.discover-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.map-visibility-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  cursor: pointer;
+}
+
+.map-visibility-toggle input {
+  width: auto;
+  margin-top: 0.25rem;
+  accent-color: var(--accent);
+}
+
+.map-visibility-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.map-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.map-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.map-heading .subtitle {
+  margin-bottom: 0;
+}
+
+.map-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.map-actions .ghost-button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.map-online-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--online);
+}
+
+.map-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.map-notice a {
+  margin-left: auto;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.map-frame {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.map-canvas {
+  height: min(72vh, 720px);
+  min-height: 380px;
+  background: var(--surface);
+  font-family: inherit;
+}
+
+.map-loading {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 500;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+}
+
+/* OpenStreetMap only draws light tiles; inverting them gives a dark map that sits with the
+   rest of the app, and turning the hue back keeps water blue and parks green. */
+.map-canvas .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+}
+
+.map-canvas .leaflet-control-attribution {
+  background: rgba(21, 12, 33, 0.8);
+  color: var(--text-muted);
+}
+
+.map-canvas .leaflet-control-attribution a {
+  color: var(--accent);
+}
+
+.map-canvas .leaflet-bar a {
+  background: var(--surface);
+  color: var(--text);
+  border-bottom-color: var(--border);
+}
+
+.map-canvas .leaflet-bar a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Leaflet sizes and positions the icon box; the look lives on the element inside it. */
+.map-avatar-icon {
+  background: none;
+  border: none;
+}
+
+.map-avatar,
+.map-popup-avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: hsl(var(--avatar-hue, 245) 38% 26%);
+  color: hsl(var(--avatar-hue, 245) 80% 82%);
+  font-weight: 700;
+  user-select: none;
+}
+
+.map-avatar {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow);
+  transition: transform var(--transition);
+}
+
+.map-avatar:hover {
+  transform: scale(1.08);
+}
+
+.map-avatar img,
+.map-popup-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.map-avatar.is-online::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--online);
+  border: 2px solid var(--surface);
+}
+
+.map-canvas .marker-cluster {
+  background: rgba(148, 87, 255, 0.28);
+  border-radius: 50%;
+}
+
+.map-canvas .marker-cluster div {
+  width: 30px;
+  height: 30px;
+  margin: 5px;
+  border-radius: 50%;
+  background: var(--brand-gradient);
+  color: var(--on-accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 30px;
+  text-align: center;
+  box-shadow: var(--glow);
+}
+
+.map-me {
+  fill: #4f8cff;
+  stroke: #ffffff;
+}
+
+.map-me-accuracy {
+  fill: #4f8cff;
+  fill-opacity: 0.12;
+  stroke: #4f8cff;
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+}
+
+.map-popup-wrapper .leaflet-popup-content-wrapper,
+.map-popup-wrapper .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+.map-popup-wrapper .leaflet-popup-content {
+  margin: 0.85rem 0.95rem;
+  font-family: inherit;
+}
+
+.map-popup-wrapper a.leaflet-popup-close-button {
+  color: var(--text-muted);
+}
+
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 190px;
+}
+
+.map-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.map-popup-head strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 0.98rem;
+}
+
+.map-popup-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+}
+
+.map-popup-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.map-popup-meta.is-online {
+  color: var(--online);
+}
+
+.map-popup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.map-popup-tag {
+  padding: 0.12rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 0.75rem;
+}
+
+.map-popup-wrapper a.map-popup-link {
+  display: block;
+  padding: 0.45rem;
+  border-radius: var(--radius-sm);
+  background: var(--brand-gradient);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .map-heading {
+    align-items: stretch;
+  }
+
+  .map-actions {
+    width: 100%;
+  }
+
+  .map-actions .ghost-button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .map-canvas {
+    height: calc(100dvh - var(--header-height) - 13rem);
+    min-height: 320px;
+  }
+
+  .map-notice {
+    flex-wrap: wrap;
+  }
+
+  .map-notice a {
+    margin-left: 0;
+  }
+}
+
 /* ---------- Toasts ---------- */
 
 .toast-stack {
