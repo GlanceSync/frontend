@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PeopleService } from '../../core/services/people/people.service';
 import { ProfileService } from '../../core/services/profile/profile.service';
@@ -7,6 +7,7 @@ import { Profile } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { RealtimeService } from '../../core/services/realtime/realtime.service';
 
 @Component({
   selector: 'app-user-profile',
@@ -18,13 +19,27 @@ export class UserProfileComponent {
   private readonly profiles = inject(ProfileService);
   private readonly activity = inject(ActivityService);
   private readonly toast = inject(ToastService);
+  private readonly realtime = inject(RealtimeService);
 
   readonly id = input.required<string>();
   readonly profile = signal<Profile | null>(null);
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly reportOpen = signal(false);
+  readonly blockOpen = signal(false);
   readonly reportReason = signal('');
+  readonly isOnline = computed(() => {
+    const profile = this.profile();
+    if (!profile) return false;
+    return this.realtime.connected()
+      ? this.realtime.onlineUserIds().has(profile.id)
+      : profile.online;
+  });
+  readonly lastSeenAt = computed(() => {
+    const profile = this.profile();
+    if (!profile) return null;
+    return this.realtime.lastSeenAt().get(profile.id) ?? profile.lastSeenAt ?? null;
+  });
 
   ngOnInit(): void { void this.load(); }
 
@@ -41,7 +56,7 @@ export class UserProfileComponent {
 
   async toggleLike(): Promise<void> {
     const profile = this.profile();
-    if (!profile || this.busy()) return;
+    if (!profile || profile.blocked || profile.blockedByThem || this.busy()) return;
     this.busy.set(true);
     try {
       const state = profile.likedByMe
@@ -69,5 +84,44 @@ export class UserProfileComponent {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  async toggleBlock(): Promise<void> {
+    const profile = this.profile();
+    if (!profile || this.busy()) return;
+    this.blockOpen.set(false);
+    this.busy.set(true);
+    try {
+      if (profile.blocked) {
+        await this.people.unblock(profile.id);
+        this.profile.set({ ...profile, blocked: false });
+        this.toast.success(`${profile.username} is unblocked.`);
+      } else {
+        await this.people.block(profile.id);
+        this.profile.set({ ...profile, blocked: true, connected: false });
+        this.toast.success(`${profile.username} is blocked.`);
+      }
+    } catch (error) {
+      this.toast.apiError(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  genderLabel(value: Profile['gender']): string {
+    return value === 'MALE' ? 'Man' : value === 'FEMALE' ? 'Woman' : 'Not specified';
+  }
+
+  preferenceLabel(value: Profile['sexualPreference']): string {
+    switch (value) {
+      case 'HETEROSEXUAL': return 'Opposite gender';
+      case 'HOMOSEXUAL': return 'Same gender';
+      case 'BISEXUAL': return 'Everyone';
+      default: return 'Not specified';
+    }
+  }
+
+  when(iso: string): string {
+    return new Date(iso).toLocaleString();
   }
 }

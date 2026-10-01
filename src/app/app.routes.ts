@@ -29,6 +29,13 @@ export const routes: Routes = [
     title: 'Reset password · GlanceSync'
   },
   {
+    path: 'auth/:provider/callback',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/oauth-callback/oauth-callback.component').then(m => m.OAuthCallbackComponent),
+    title: 'Signing in · GlanceSync'
+  },
+  {
     path: 'complete-profile',
     canActivate: [incompleteProfileGuard],
     loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent),

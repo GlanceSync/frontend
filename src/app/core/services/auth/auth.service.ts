@@ -78,6 +78,38 @@ export class AuthService {
     return response.user;
   }
 
+  async oauthProviders(): Promise<string[]> {
+    const response = await firstValueFrom(
+      this.http.get<{ providers: string[] }>('/api/auth/oauth/providers')
+    );
+    return response.providers;
+  }
+
+  beginOAuth(provider: string): void {
+    if (!this.isBrowser) return;
+    window.location.assign(`/api/auth/${encodeURIComponent(provider)}`);
+  }
+
+  async completeOAuth(
+    provider: string,
+    callback: { code?: string; state?: string; error?: string }
+  ): Promise<AuthUser> {
+    const params: Record<string, string> = {};
+    if (callback.code) params['code'] = callback.code;
+    if (callback.state) params['state'] = callback.state;
+    if (callback.error) params['error'] = callback.error;
+
+    const response = await firstValueFrom(
+      this.http.get<AuthResponse>(`/api/auth/${encodeURIComponent(provider)}/callback`, {
+        params,
+        withCredentials: true
+      })
+    );
+    this.acceptTokens(response);
+    this.resolved = true;
+    return response.user;
+  }
+
   async resendVerification(email: string): Promise<void> {
     await firstValueFrom(this.http.post('/api/auth/resend-verification', { email }));
   }

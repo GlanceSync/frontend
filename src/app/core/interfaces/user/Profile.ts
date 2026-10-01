@@ -36,6 +36,8 @@ export interface Profile {
   likedByMe?: boolean | null;
   likesMe?: boolean | null;
   connected?: boolean | null;
+  blocked?: boolean | null;
+  blockedByThem?: boolean | null;
 }
 
 export interface Account {
@@ -83,6 +85,7 @@ export interface DiscoveryPreferences {
   distance?: number | null;
   city?: string | null;
   tags?: string[] | null;
+  minCommonTags?: number | null;
   sort?: string | null;
   order?: string | null;
 }

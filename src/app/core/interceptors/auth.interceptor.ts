@@ -5,7 +5,7 @@ import { catchError, from, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth/auth.service';
 
 /** Endpoints that work without an access token; a 401 from them is a real answer. */
-const TOKENLESS = /^\/api\/auth\/(login|register|refresh|logout|verify-email|resend-verification|forgot-password|reset-password)$/;
+const TOKENLESS = /^\/api\/auth\/(login|register|refresh|logout|verify-email|resend-verification|forgot-password|reset-password|oauth\/providers|(?:42|google|facebook)(?:\/callback)?)$/;
 
 function withToken(request: HttpRequest<unknown>, token: string | null): HttpRequest<unknown> {
   return token ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : request;
