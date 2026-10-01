@@ -28,7 +28,9 @@ export interface Profile {
   birthDate?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  locationAccuracy?: number | null;
   locationSource?: LocationSource | null;
+  showOnMap?: boolean | null;
   completed?: boolean | null;
   distanceKm?: number | null;
   likedByMe?: boolean | null;

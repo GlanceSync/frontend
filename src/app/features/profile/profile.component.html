@@ -110,12 +110,23 @@
           <div class="city-results" role="listbox" aria-label="Matching cities">
             @for (result of cityResults(); track result.place_id) {
               <button type="button" class="city-result" role="option" (click)="selectCity(result)">
-                <strong>{{ result.address?.city ?? result.address?.town ?? result.address?.village ?? result.name ?? result.display_name.split(',')[0] }}</strong>
+                <strong>{{ cityName(result) }}</strong>
                 <span>{{ result.display_name }}</span>
               </button>
             }
           </div>
         }
+        @if (profileForm.controls.locationSource.value === 'GPS' && profileForm.controls.accuracy.value != null) {
+          <small class="form-help">GPS position, accurate to about {{ profileForm.controls.accuracy.value | number:'1.0-0' }} m.</small>
+        }
+        <label class="map-visibility-toggle">
+          <input type="checkbox" [checked]="me.showOnMap !== false" [disabled]="savingMapVisibility()"
+                 (change)="toggleMapVisibility($any($event.target).checked)" />
+          <span>
+            <strong>Show me on the map</strong>
+            <small class="meta-line">Others see your area, never your exact position. Turning this off keeps distances working.</small>
+          </span>
+        </label>
         <small class="geocode-attribution">
           City search © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
         </small>

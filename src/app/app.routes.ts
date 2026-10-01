@@ -43,6 +43,12 @@ export const routes: Routes = [
     title: 'Discover · GlanceSync'
   },
   {
+    path: 'map',
+    canActivate: [profileCompleteGuard],
+    loadComponent: () => import('./features/map/map.component').then(m => m.MapComponent),
+    title: 'Map · GlanceSync'
+  },
+  {
     path: 'chat',
     canActivate: [profileCompleteGuard],
     loadComponent: () =>

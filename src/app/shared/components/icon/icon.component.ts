@@ -5,7 +5,8 @@ export type IconName =
   | 'phone' | 'phone-off' | 'phone-incoming'
   | 'bell' | 'users' | 'calendar' | 'message' | 'send'
   | 'log-out' | 'arrow-left' | 'check' | 'check-double' | 'x' | 'clock' | 'slash'
-  | 'block' | 'unblock' | 'more' | 'plus' | 'maximize' | 'minimize' | 'camera' | 'upload' | 'alert-circle' | 'eye' | 'eye-off';
+  | 'block' | 'unblock' | 'more' | 'plus' | 'maximize' | 'minimize' | 'camera' | 'upload' | 'alert-circle' | 'eye' | 'eye-off'
+  | 'map' | 'map-pin';
 
 /**
  * Inline SVG icons. Drawn with `currentColor` and a 24px grid so an icon inherits the
@@ -155,6 +156,15 @@ export type IconName =
         @case ('eye') {
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
           <circle cx="12" cy="12" r="3" />
+        }
+        @case ('map') {
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+          <line x1="8" y1="2" x2="8" y2="18" />
+          <line x1="16" y1="6" x2="16" y2="22" />
+        }
+        @case ('map-pin') {
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
         }
         @case ('eye-off') {
           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
