@@ -49,9 +49,14 @@ export class AuthService {
 
   refresh(): Promise<string | null> {
     this.refreshing ??= firstValueFrom(
-      this.http.post<AuthResponse>('/api/auth/refresh', {}, { withCredentials: true })
+      this.http.post<AuthResponse | null>('/api/auth/refresh', {}, { withCredentials: true })
     )
       .then(response => {
+        // 204 with no body: nobody is signed in.
+        if (!response) {
+          this.clearSession();
+          return null;
+        }
         this.acceptTokens(response);
         return response.accessToken;
       })
