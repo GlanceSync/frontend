@@ -36,6 +36,8 @@
 
   @if (loading()) {
     <p class="placeholder">Loading conversation…</p>
+  } @else if (notConnected()) {
+    <p class="placeholder">You can only chat with people you are connected with.</p>
   } @else if (loadFailed()) {
     <p class="placeholder">This conversation could not be loaded.</p>
     <button type="button" class="link-button" (click)="retry()">Try again</button>

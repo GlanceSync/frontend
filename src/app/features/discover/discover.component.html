@@ -31,7 +31,7 @@
   </header>
 
   @if (view() === 'list') {
-    <app-sort-bar [sort]="activePreferences().sort" [order]="activePreferences().order"
+    <app-sort-bar [sort]="listSort()" [order]="activePreferences().order"
                   (changed)="changeSort($event)" />
   }
 

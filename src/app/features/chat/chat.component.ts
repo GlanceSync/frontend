@@ -37,6 +37,8 @@ export class ChatComponent {
   readonly loading = signal(true);
   /** The last load failed; the reason went to a toast, the page offers a retry. */
   readonly loadFailed = signal(false);
+  /** Not a connection (never matched, unliked or blocked): there is no conversation to load. */
+  readonly notConnected = signal(false);
   readonly partner = signal<Person | null>(null);
 
   readonly otherUserId = computed(() => this.id());
@@ -303,13 +305,18 @@ export class ChatComponent {
   private async load(otherUserId: string): Promise<void> {
     this.loading.set(true);
     this.loadFailed.set(false);
+    this.notConnected.set(false);
     try {
-      const [history, everyone] = await Promise.all([
-        this.messages.conversation(otherUserId),
-        this.people.list()
-      ]);
-      this.entries.set(history);
-      this.partner.set(everyone.find(person => person.id === otherUserId) ?? null);
+      // The people list holds exactly the connections, so check it first rather than
+      // asking for a conversation the server would refuse.
+      const partner = (await this.people.list()).find(person => person.id === otherUserId) ?? null;
+      this.partner.set(partner);
+      if (!partner) {
+        this.entries.set([]);
+        this.notConnected.set(true);
+        return;
+      }
+      this.entries.set(await this.messages.conversation(otherUserId));
       this.realtime.markRead(otherUserId);
       this.afterRender();
     } catch (error) {

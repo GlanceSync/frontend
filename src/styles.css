@@ -2085,6 +2085,7 @@ a.username.active {
 }
 
 .interest-option {
+  position: relative;
   display: inline-flex;
   align-items: center;
   margin: 0;
@@ -2964,6 +2965,7 @@ a.username.active {
 }
 
 .preferences-form .interest-option {
+  position: relative;
   display: inline-flex;
 }
 
@@ -3829,7 +3831,8 @@ a.username.active {
     grid-column: auto;
   }
 
-  .profile-form-grid input,
+  /* Not the tag checkboxes: they are hidden 1px inputs, and a full width pushed the page sideways. */
+  .profile-form-grid input:not([type='checkbox']),
   .profile-form-grid select,
   .profile-form-grid textarea {
     width: 100%;

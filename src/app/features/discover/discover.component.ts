@@ -13,6 +13,8 @@ import { SortBarComponent, SortChange } from '../../shared/components/sort-bar/s
 
 const DISCOVERY_PAGE_SIZE = 20;
 
+const RECOMMENDED = 'recommended';
+
 @Component({
   selector: 'app-discover',
   imports: [RouterLink, ReactiveFormsModule, IconComponent, ProfileGridComponent, SortBarComponent],
@@ -37,6 +39,11 @@ export class DiscoverComponent {
   /** What the next page is fetched with: the saved preferences, or a sort picked above the list. */
   readonly activePreferences = signal<DiscoveryPreferences>({});
   readonly view = signal<'cards' | 'list'>('cards');
+  /** The sort shown above the list; "recommended" is sent to override a saved sort, but shows as none. */
+  readonly listSort = computed(() => {
+    const sort = this.activePreferences().sort;
+    return sort === RECOMMENDED ? null : sort;
+  });
   readonly sortOptions = SORT_OPTIONS;
 
   /** The card on top of the deck. Built from the suggestion alone, so it is not a profile visit. */
@@ -121,8 +128,7 @@ export class DiscoverComponent {
     if (this.loadingMore() || !this.hasMore()) return;
     this.loadingMore.set(true);
     try {
-      const page = await this.fetchPage();
-      this.candidates.update(current => [...current, ...page]);
+      this.append(await this.fetchPage());
     } catch (error) {
       this.toast.apiError(error);
     } finally {
@@ -132,7 +138,7 @@ export class DiscoverComponent {
 
   /** A sort picked above the list applies to this visit only; Preferences is where it is saved. */
   async changeSort(change: SortChange): Promise<void> {
-    this.activePreferences.update(current => ({ ...current, sort: change.sort, order: change.order }));
+    this.activePreferences.update(current => ({ ...current, sort: change.sort ?? RECOMMENDED, order: change.order }));
     await this.loadDeck();
   }
 
@@ -230,6 +236,8 @@ export class DiscoverComponent {
     this.acting.set(true);
     try {
       const state = await this.activity.like(profile.id);
+      // Liked people leave the results, so everyone after them moves up one place.
+      this.nextOffset = Math.max(0, this.nextOffset - 1);
       this.dragX.set(520);
       if (state.connected) this.toast.success(`You matched with ${profile.firstName}!`);
       else this.toast.success(`You liked ${profile.firstName}.`);
@@ -281,8 +289,7 @@ export class DiscoverComponent {
     try {
       // Fetch ahead when the deck runs out, so the next card is ready.
       if (this.index() + 1 >= this.candidates().length && this.hasMore()) {
-        const page = await this.fetchPage();
-        this.candidates.update(current => [...current, ...page]);
+        this.append(await this.fetchPage());
       }
     } catch (error) {
       this.toast.apiError(error);
@@ -291,6 +298,14 @@ export class DiscoverComponent {
     this.dragX.set(0);
     this.photoIndex.set(0);
     this.acting.set(false);
+  }
+
+  /** Adds a page, leaving out anyone already loaded in case the results shifted in between. */
+  private append(page: DiscoveryCard[]): void {
+    this.candidates.update(current => {
+      const loaded = new Set(current.map(card => card.id));
+      return [...current, ...page.filter(card => !loaded.has(card.id))];
+    });
   }
 
   private async fetchPage(): Promise<DiscoveryCard[]> {
