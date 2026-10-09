@@ -44,8 +44,11 @@
       </div>
     </div>
 
-    @if (person.connected) { <p class="match-banner">You matched with {{ person.firstName }}.</p> }
-    @else if (person.likesMe) { <p class="liked-you-banner">{{ person.firstName }} liked you.</p> }
+    <!-- Likes are kept through a block, but mean nothing until it is lifted. -->
+    @if (!person.blocked && !person.blockedByThem) {
+      @if (person.connected) { <p class="match-banner">You matched with {{ person.firstName }}.</p> }
+      @else if (person.likesMe) { <p class="liked-you-banner">{{ person.firstName }} liked you.</p> }
+    }
     @if (person.blocked) { <p class="block-notice">You blocked this user. Likes and messaging are disabled.</p> }
     @else if (person.blockedByThem) { <p class="block-notice">This profile is unavailable for likes and messaging.</p> }
 

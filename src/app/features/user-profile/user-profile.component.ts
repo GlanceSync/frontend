@@ -94,13 +94,13 @@ export class UserProfileComponent {
     try {
       if (profile.blocked) {
         await this.people.unblock(profile.id);
-        this.profile.set({ ...profile, blocked: false });
         this.toast.success(`${profile.username} is unblocked.`);
       } else {
         await this.people.block(profile.id);
-        this.profile.set({ ...profile, blocked: true, connected: false });
         this.toast.success(`${profile.username} is blocked.`);
       }
+      // Re-read rather than guess: likes survive a block, so the server knows the real state.
+      this.profile.set(await this.profiles.profile(profile.id));
     } catch (error) {
       this.toast.apiError(error);
     } finally {
