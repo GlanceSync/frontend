@@ -70,11 +70,23 @@ export interface ProfileActivity {
   connected: boolean;
 }
 
+/** Someone in a discovery or search result. Reading it never counts as a profile visit. */
 export interface DiscoveryCard {
-  id?: string;
-  userId?: string;
-  username?: string;
+  id: string;
+  username: string;
+  firstName: string;
+  biography?: string | null;
   avatarUrl?: string | null;
+  /** Picture URLs, the profile picture first. */
+  pictures: string[];
+  gender?: Gender | null;
+  age?: number | null;
+  city?: string | null;
+  distanceKm?: number | null;
+  fameRating: number;
+  commonTags: number;
+  interests: string[];
+  online: boolean;
 }
 
 export interface DiscoveryPreferences {

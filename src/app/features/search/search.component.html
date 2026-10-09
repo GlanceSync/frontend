@@ -1,0 +1,90 @@
+<section class="search-page">
+  <header class="discover-heading">
+    <div>
+      <h1>Search</h1>
+      <p class="subtitle">Find people by age, fame rating, location and interests.</p>
+    </div>
+  </header>
+
+  <form class="panel search-form preferences-form" [formGroup]="form" (ngSubmit)="search()" novalidate>
+    <div class="search-criteria">
+      <fieldset>
+        <legend>Age range</legend>
+        <div class="range-fields">
+          <label>Minimum
+            <input type="number" formControlName="minAge" min="18" max="120" placeholder="18" />
+          </label>
+          <label>Maximum
+            <input type="number" formControlName="maxAge" min="18" max="120" placeholder="Any" />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Fame rating range</legend>
+        <div class="range-fields">
+          <label>Minimum
+            <input type="number" formControlName="minFame" min="0" placeholder="Any" />
+          </label>
+          <label>Maximum
+            <input type="number" formControlName="maxFame" min="0" placeholder="Any" />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Location</legend>
+        <div class="range-fields">
+          <label>City
+            <input type="text" formControlName="city" maxlength="100" placeholder="Any city" />
+          </label>
+          <label>Within (km)
+            <input type="number" formControlName="distance" min="1" step="1" placeholder="Anywhere" />
+          </label>
+        </div>
+      </fieldset>
+    </div>
+
+    <fieldset>
+      <legend>Interests</legend>
+      <div class="preference-tags">
+        @if (!availableInterests().length) {
+          <span class="meta-line">No interests are available.</span>
+        }
+        @for (interest of availableInterests(); track interest.id) {
+          <label class="interest-option" [class.selected]="tagSelected(interest.name)">
+            <input type="checkbox" [checked]="tagSelected(interest.name)"
+                   (change)="toggleTag(interest.name, $any($event.target).checked)" />
+            <span>{{ interest.name }}</span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <div class="modal-actions">
+      <button type="button" class="ghost-button" (click)="reset()">Clear</button>
+      <button type="submit" class="solid-button" [disabled]="searching()">
+        {{ searching() ? 'Searching…' : 'Search' }}
+      </button>
+    </div>
+  </form>
+
+  @if (results(); as people) {
+    <div class="search-results-head">
+      <h2>{{ people.length }}{{ hasMore() ? '+' : '' }} {{ people.length === 1 ? 'person' : 'people' }}</h2>
+      <app-sort-bar [sort]="sort()" [order]="order()" emptyLabel="Best match" (changed)="changeSort($event)" />
+    </div>
+    @if (people.length) {
+      <app-profile-grid [people]="people" />
+      @if (hasMore()) {
+        <div class="load-more">
+          <button type="button" class="ghost-button" (click)="loadMore()" [disabled]="loadingMore()">
+            {{ loadingMore() ? 'Loading…' : 'Show more' }}
+          </button>
+        </div>
+      }
+    } @else {
+      <p class="placeholder">Nobody matches these criteria. Try widening them.</p>
+    }
+  }
+</section>

@@ -8,11 +8,36 @@ export interface DiscoveryQuery extends DiscoveryPreferences {
   offset?: number;
 }
 
+export type SortKey = 'age' | 'distance' | 'fame' | 'commonTags';
+export type SortOrder = 'asc' | 'desc';
+
+/** The sorts the API accepts, each with the direction people expect first. */
+export const SORT_OPTIONS: readonly { value: SortKey; label: string; defaultOrder: SortOrder }[] = [
+  { value: 'age', label: 'Age', defaultOrder: 'asc' },
+  { value: 'distance', label: 'Distance', defaultOrder: 'asc' },
+  { value: 'fame', label: 'Fame rating', defaultOrder: 'desc' },
+  { value: 'commonTags', label: 'Common interests', defaultOrder: 'desc' }
+];
+
+export function defaultOrder(sort: string | null | undefined): SortOrder {
+  return SORT_OPTIONS.find(option => option.value === sort)?.defaultOrder ?? 'asc';
+}
+
 @Injectable({ providedIn: 'root' })
 export class DiscoveryService {
   private readonly http = inject(HttpClient);
 
+  /** Suggestions: the saved preferences, with any field in `query` overriding them. */
   discover(query: DiscoveryQuery = {}): Promise<DiscoveryCard[]> {
+    return firstValueFrom(this.http.get<DiscoveryCard[]>('/api/users/discover', { params: this.params(query) }));
+  }
+
+  /** Advanced search: only these criteria, never the saved preferences. */
+  search(query: DiscoveryQuery): Promise<DiscoveryCard[]> {
+    return firstValueFrom(this.http.get<DiscoveryCard[]>('/api/users/search', { params: this.params(query) }));
+  }
+
+  private params(query: DiscoveryQuery): Record<string, string> {
     const params: Record<string, string> = {};
     const scalarKeys: (keyof DiscoveryQuery)[] = [
       'minAge', 'maxAge', 'minFame', 'maxFame', 'distance', 'city',
@@ -23,12 +48,7 @@ export class DiscoveryService {
       if (value != null && value !== '') params[key] = String(value);
     }
     if (query.tags?.length) params['tags'] = query.tags.join(',');
-
-    return firstValueFrom(
-      this.http.get<DiscoveryCard[]>('/api/users/discover', {
-        params
-      })
-    );
+    return params;
   }
 
   discoveryPreferences(): Promise<DiscoveryPreferences> {

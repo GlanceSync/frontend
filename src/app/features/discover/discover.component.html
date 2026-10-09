@@ -1,10 +1,24 @@
-<section class="discover-page">
+<section class="discover-page" [class.discover-page-wide]="view() === 'list'">
   <header class="discover-heading">
     <div>
       <h1>Discover</h1>
-      <p class="subtitle">Swipe right to like, or left to pass.</p>
+      <p class="subtitle">
+        {{ view() === 'cards' ? 'Swipe right to like, or left to pass.' : 'People suggested for you.' }}
+      </p>
     </div>
     <div class="discover-actions">
+      <div class="view-toggle" role="group" aria-label="Show suggestions as">
+        <button type="button" [class.active]="view() === 'cards'" [attr.aria-pressed]="view() === 'cards'"
+                (click)="view.set('cards')">
+          <app-icon name="layers" [size]="16" />
+          <span>Cards</span>
+        </button>
+        <button type="button" [class.active]="view() === 'list'" [attr.aria-pressed]="view() === 'list'"
+                (click)="view.set('list')">
+          <app-icon name="grid" [size]="16" />
+          <span>List</span>
+        </button>
+      </div>
       <a routerLink="/map" class="ghost-button">
         <app-icon name="map-pin" [size]="18" />
         <span>Map view</span>
@@ -16,8 +30,29 @@
     </div>
   </header>
 
+  @if (view() === 'list') {
+    <app-sort-bar [sort]="activePreferences().sort" [order]="activePreferences().order"
+                  (changed)="changeSort($event)" />
+  }
+
   @if (loading()) {
     <p class="placeholder">Finding people near you…</p>
+  } @else if (view() === 'list') {
+    @if (candidates().length) {
+      <app-profile-grid [people]="candidates()" />
+      @if (hasMore()) {
+        <div class="load-more">
+          <button type="button" class="ghost-button" (click)="loadMore()" [disabled]="loadingMore()">
+            {{ loadingMore() ? 'Loading…' : 'Show more' }}
+          </button>
+        </div>
+      }
+    } @else {
+      <div class="discover-empty">
+        <h2>Nobody matches yet</h2>
+        <p class="subtitle">Try widening your preferences.</p>
+      </div>
+    }
   } @else {
     @if (profile(); as person) {
     <div class="swipe-stage">
@@ -37,7 +72,7 @@
 
           @if (person.pictures.length > 1) {
             <div class="photo-progress" aria-hidden="true">
-              @for (picture of person.pictures; track picture.id; let i = $index) {
+              @for (picture of person.pictures; track $index; let i = $index) {
                 <span [class.active]="i === photoIndex()"></span>
               }
             </div>
@@ -49,7 +84,7 @@
 
           <div class="swipe-summary">
             <div>
-              <h2>{{ person.firstName }}, {{ person.age }}</h2>
+              <h2>{{ person.firstName }}@if (person.age != null) {, {{ person.age }}}</h2>
               <p>
                 @if (person.city) { {{ person.city }} }
                 @if (person.distanceKm != null) { · {{ person.distanceKm }} km away }
@@ -148,13 +183,13 @@
               <label class="common-tags-field">
                 Minimum interests in common
                 <input type="number" formControlName="minCommonTags" min="0" step="1"
-                       placeholder="Any" [max]="preferenceTags().length || null" />
-                <small>Only applies when one or more interests are selected.</small>
+                       placeholder="Any" />
+                <small>Counts the interests you share with them.</small>
               </label>
             </fieldset>
 
             <fieldset>
-              <legend>Popularity range</legend>
+              <legend>Fame rating range</legend>
               <div class="range-fields">
                 <label>Minimum
                   <input type="number" formControlName="minFame" min="0" placeholder="Any" />
@@ -171,16 +206,15 @@
                 <label>Sort
                   <select formControlName="sort">
                     <option value="">Recommended</option>
-                    <option value="age">Age</option>
-                    <option value="distance">Distance</option>
-                    <option value="fame">Popularity</option>
-                    <option value="commonTags">Common interests</option>
+                    @for (option of sortOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
                   </select>
                 </label>
                 <label>Order
                   <select formControlName="order">
-                    <option value="ASC">Ascending</option>
-                    <option value="DESC">Descending</option>
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
                   </select>
                 </label>
               </div>

@@ -2,38 +2,45 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DiscoveryService } from '../../core/services/discovery/discovery.service';
-import { ProfileService } from '../../core/services/profile/profile.service';
+import { DiscoveryService, SORT_OPTIONS, defaultOrder } from '../../core/services/discovery/discovery.service';
 import { InterestService } from '../../core/services/interest/interest.service';
 import { ActivityService } from '../../core/services/activity/activity.service';
-import { DiscoveryCard, DiscoveryPreferences, Interest, Profile } from '../../core/interfaces/user/Profile';
+import { DiscoveryCard, DiscoveryPreferences, Interest } from '../../core/interfaces/user/Profile';
 import { ToastService } from '../../core/services/toast/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { ProfileGridComponent } from '../../shared/components/profile-grid/profile-grid.component';
+import { SortBarComponent, SortChange } from '../../shared/components/sort-bar/sort-bar.component';
 
 const DISCOVERY_PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-discover',
-  imports: [RouterLink, ReactiveFormsModule, IconComponent],
+  imports: [RouterLink, ReactiveFormsModule, IconComponent, ProfileGridComponent, SortBarComponent],
   templateUrl: './discover.component.html'
 })
 export class DiscoverComponent {
   private readonly discovery = inject(DiscoveryService);
-  private readonly profiles = inject(ProfileService);
   private readonly interests = inject(InterestService);
   private readonly activity = inject(ActivityService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
 
-  private readonly candidates = signal<DiscoveryCard[]>([]);
   private readonly index = signal(0);
-  private readonly activePreferences = signal<DiscoveryPreferences>({});
   private nextOffset = 0;
-  private hasMore = true;
   private pointerStartX = 0;
   private pointerId: number | null = null;
 
-  readonly profile = signal<Profile | null>(null);
+  /** Every suggestion loaded so far: the deck walks through it, the list shows all of it. */
+  readonly candidates = signal<DiscoveryCard[]>([]);
+  readonly hasMore = signal(true);
+  readonly loadingMore = signal(false);
+  /** What the next page is fetched with: the saved preferences, or a sort picked above the list. */
+  readonly activePreferences = signal<DiscoveryPreferences>({});
+  readonly view = signal<'cards' | 'list'>('cards');
+  readonly sortOptions = SORT_OPTIONS;
+
+  /** The card on top of the deck. Built from the suggestion alone, so it is not a profile visit. */
+  readonly profile = computed<DiscoveryCard | null>(() => this.candidates()[this.index()] ?? null);
   readonly loading = signal(true);
   readonly acting = signal(false);
   readonly dragX = signal(0);
@@ -54,7 +61,7 @@ export class DiscoverComponent {
     city: [''],
     minCommonTags: [''],
     sort: [''],
-    order: [{ value: 'ASC', disabled: true }]
+    order: [{ value: 'asc', disabled: true }]
   });
 
   readonly cardTransform = computed(() => {
@@ -67,7 +74,7 @@ export class DiscoverComponent {
   );
   readonly currentPhoto = computed(() => {
     const pictures = this.profile()?.pictures ?? [];
-    return pictures[this.photoIndex()]?.url ?? this.profile()?.avatarUrl ?? '';
+    return pictures[this.photoIndex()] ?? this.profile()?.avatarUrl ?? '';
   });
 
   constructor() {
@@ -75,6 +82,7 @@ export class DiscoverComponent {
       .pipe(takeUntilDestroyed())
       .subscribe(sort => {
         if (sort) {
+          this.preferencesForm.controls.order.setValue(defaultOrder(sort), { emitEvent: false });
           this.preferencesForm.controls.order.enable({ emitEvent: false });
         } else {
           this.preferencesForm.controls.order.disable({ emitEvent: false });
@@ -85,6 +93,10 @@ export class DiscoverComponent {
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    // Only the deck reacts, and never while someone is typing or the preferences are open.
+    const target = event.target as HTMLElement | null;
+    if (this.view() !== 'cards' || this.preferencesOpen()
+      || target?.closest('input, select, textarea, [contenteditable="true"]')) return;
     if (event.key === 'ArrowLeft') void this.pass();
     if (event.key === 'ArrowRight') void this.like();
   }
@@ -93,16 +105,35 @@ export class DiscoverComponent {
     this.loading.set(true);
     try {
       this.nextOffset = 0;
-      this.hasMore = true;
+      this.hasMore.set(true);
       const page = await this.fetchPage();
       this.candidates.set(page);
       this.index.set(0);
-      await this.loadCurrent();
+      this.photoIndex.set(0);
     } catch (error) {
       this.toast.apiError(error);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async loadMore(): Promise<void> {
+    if (this.loadingMore() || !this.hasMore()) return;
+    this.loadingMore.set(true);
+    try {
+      const page = await this.fetchPage();
+      this.candidates.update(current => [...current, ...page]);
+    } catch (error) {
+      this.toast.apiError(error);
+    } finally {
+      this.loadingMore.set(false);
+    }
+  }
+
+  /** A sort picked above the list applies to this visit only; Preferences is where it is saved. */
+  async changeSort(change: SortChange): Promise<void> {
+    this.activePreferences.update(current => ({ ...current, sort: change.sort, order: change.order }));
+    await this.loadDeck();
   }
 
   private async initialize(): Promise<void> {
@@ -201,6 +232,7 @@ export class DiscoverComponent {
       const state = await this.activity.like(profile.id);
       this.dragX.set(520);
       if (state.connected) this.toast.success(`You matched with ${profile.firstName}!`);
+      else this.toast.success(`You liked ${profile.firstName}.`);
       await this.delay(180);
       await this.advance();
     } catch (error) {
@@ -246,35 +278,19 @@ export class DiscoverComponent {
   }
 
   private async advance(): Promise<void> {
+    try {
+      // Fetch ahead when the deck runs out, so the next card is ready.
+      if (this.index() + 1 >= this.candidates().length && this.hasMore()) {
+        const page = await this.fetchPage();
+        this.candidates.update(current => [...current, ...page]);
+      }
+    } catch (error) {
+      this.toast.apiError(error);
+    }
     this.index.update(value => value + 1);
     this.dragX.set(0);
     this.photoIndex.set(0);
-    await this.loadCurrent();
     this.acting.set(false);
-  }
-
-  private async loadCurrent(): Promise<void> {
-    while (true) {
-      if (this.index() >= this.candidates().length) {
-        if (!this.hasMore) break;
-        const page = await this.fetchPage();
-        if (!page.length) break;
-        this.candidates.update(current => [...current, ...page]);
-      }
-      const candidate = this.candidates()[this.index()];
-      const id = candidate.id ?? candidate.userId;
-      if (!id) {
-        this.index.update(value => value + 1);
-        continue;
-      }
-      try {
-        this.profile.set(await this.profiles.profile(id));
-        return;
-      } catch {
-        this.index.update(value => value + 1);
-      }
-    }
-    this.profile.set(null);
   }
 
   private async fetchPage(): Promise<DiscoveryCard[]> {
@@ -284,7 +300,7 @@ export class DiscoverComponent {
       offset: this.nextOffset
     });
     this.nextOffset += page.length;
-    this.hasMore = page.length === DISCOVERY_PAGE_SIZE;
+    this.hasMore.set(page.length === DISCOVERY_PAGE_SIZE);
     return page;
   }
 
@@ -315,7 +331,7 @@ export class DiscoverComponent {
       city: preferences.city ?? '',
       minCommonTags: preferences.minCommonTags == null ? '' : String(preferences.minCommonTags),
       sort: preferences.sort ?? '',
-      order: preferences.order ?? 'ASC'
+      order: preferences.order ?? defaultOrder(preferences.sort)
     });
     this.preferenceTags.set(preferences.tags ?? []);
   }
