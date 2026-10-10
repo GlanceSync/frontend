@@ -15,6 +15,10 @@ export const profileCompleteGuard: CanActivateFn = async () => {
   if (!user) {
     return router.createUrlTree(['/login']);
   }
+  // Administrators moderate; they have no dating profile to complete.
+  if (user.role === 'ADMIN') {
+    return router.createUrlTree(['/admin']);
+  }
   return user.profileCompleted ? true : router.createUrlTree(['/complete-profile']);
 };
 
@@ -30,6 +34,9 @@ export const incompleteProfileGuard: CanActivateFn = async () => {
   const user = await auth.ensureResolved();
   if (!user) {
     return router.createUrlTree(['/login']);
+  }
+  if (user.role === 'ADMIN') {
+    return router.createUrlTree(['/admin']);
   }
   return user.profileCompleted ? router.createUrlTree(['/discover']) : true;
 };

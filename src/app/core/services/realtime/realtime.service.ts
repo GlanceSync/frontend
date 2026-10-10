@@ -5,6 +5,7 @@ import { AppNotification } from '../../interfaces/notification/AppNotification';
 import { CallSignal } from '../../interfaces/call/CallSignal';
 import { ChatEntry } from '../../interfaces/chat/ChatEntry';
 import { ChatMessage } from '../../interfaces/chat/ChatMessage';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 import { ToastService } from '../toast/toast.service';
 
@@ -37,6 +38,9 @@ interface ChatReadEvent extends RealtimeMessage {
   byUserId: string;
 }
 
+/** Matches AdminService.FROZEN_CLOSE_CODE on the server. */
+const ACCOUNT_FROZEN_CLOSE_CODE = 4003;
+
 /**
  * Owns the single WebSocket connection. Presence today; chat, notifications and call
  * signalling arrive on this same socket in later phases.
@@ -49,6 +53,7 @@ export class RealtimeService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   /** Who is currently online. Authoritative only while `connected()` is true. */
@@ -226,10 +231,17 @@ export class RealtimeService {
 
     socket.onmessage = event => this.handle(event.data);
 
-    socket.onclose = () => {
+    socket.onclose = event => {
       this.connected.set(false);
       this.onlineUserIds.set(new Set());
       this.socket = null;
+      // An administrator froze this account: end the session instead of reconnecting.
+      if (event.code === ACCOUNT_FROZEN_CLOSE_CODE) {
+        this.wantConnection = false;
+        this.toast.error('Your account has been frozen by an administrator.');
+        void this.auth.logout().finally(() => this.router.navigate(['/login']));
+        return;
+      }
       if (this.wantConnection) {
         this.scheduleReconnect();
       }

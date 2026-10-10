@@ -53,11 +53,6 @@ export class DiscoveryService {
     return firstValueFrom(this.http.get<DiscoveryCard[]>('/api/users/discover', { params: this.params(query) }));
   }
 
-  /** Advanced search: only these criteria, never the saved preferences. */
-  search(query: DiscoveryQuery): Promise<DiscoveryCard[]> {
-    return firstValueFrom(this.http.get<DiscoveryCard[]>('/api/users/search', { params: this.params(query) }));
-  }
-
   private params(query: DiscoveryQuery): Record<string, string> {
     const params: Record<string, string> = {};
     const scalarKeys: (keyof DiscoveryQuery)[] = [

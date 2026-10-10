@@ -6,14 +6,15 @@
 
   @if (currentUser(); as user) {
     <nav class="header-nav">
-      @if (user.profileCompleted) {
+      @if (user.role === 'ADMIN') {
+        <a routerLink="/admin" routerLinkActive="active" class="nav-link" title="Reported accounts">
+          <app-icon name="alert-circle" />
+          <span class="nav-label">Reports</span>
+        </a>
+      } @else if (user.profileCompleted) {
         <a routerLink="/discover" routerLinkActive="active" class="nav-link" title="Discover people">
           <app-icon name="users" />
           <span class="nav-label">Discover</span>
-        </a>
-        <a routerLink="/search" routerLinkActive="active" class="nav-link" title="Search people">
-          <app-icon name="search" />
-          <span class="nav-label">Search</span>
         </a>
         <a routerLink="/map" routerLinkActive="active" class="nav-link" title="People near you on a map">
           <app-icon name="map" />
@@ -51,6 +52,12 @@
         <span class="setup-required">Complete your profile to continue</span>
       }
 
+      @if (user.role === 'ADMIN') {
+        <span class="username">
+          <app-avatar class="avatar-tiny" [name]="user.username" [src]="user.avatarUrl" />
+          <span class="nav-label">{{ user.username }}</span>
+        </span>
+      } @else {
       <a [routerLink]="user.profileCompleted ? '/profile' : '/complete-profile'" routerLinkActive="active" class="username"
          [title]="(connected() ? 'Connected' : 'Reconnecting…') + ' · Edit profile'">
         <app-avatar class="avatar-tiny" [name]="user.username" [src]="user.avatarUrl">
@@ -58,6 +65,7 @@
         </app-avatar>
         <span class="nav-label">{{ user.username }}</span>
       </a>
+      }
 
       <button type="button" class="icon-button" (click)="logout()" title="Log out" aria-label="Log out">
         <app-icon name="log-out" />

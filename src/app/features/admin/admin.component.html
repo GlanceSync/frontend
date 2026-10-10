@@ -1,0 +1,79 @@
+<section class="panel">
+  <h1>Reported accounts</h1>
+  <p class="subtitle">
+    Accounts reported as fake. Freezing one signs it out everywhere, blocks sign-in and hides it from everyone.
+    @if (!loading() && !loadFailed()) {
+      <strong>{{ pendingCount() }}</strong> awaiting review.
+    }
+  </p>
+
+  @if (loading()) {
+    <p class="placeholder">Loading…</p>
+  } @else if (loadFailed()) {
+    <p class="placeholder">Reports could not be loaded.</p>
+    <button type="button" class="link-button" (click)="load()">Try again</button>
+  } @else if (users().length === 0) {
+    <p class="placeholder">No reports. Nothing to review.</p>
+  } @else {
+    <ul class="reported">
+      @for (user of users(); track user.id) {
+        <li class="reported-user" [class.frozen]="!user.isActive">
+          <div class="reported-head">
+            <app-avatar [name]="user.username" [src]="user.avatarUrl" />
+            <div class="reported-who">
+              <span class="reported-name">
+                {{ user.firstName }} {{ user.lastName }}
+                <span class="reported-username">&#64;{{ user.username }}</span>
+              </span>
+              <small class="meta-line">
+                {{ user.reportCount }} {{ user.reportCount === 1 ? 'report' : 'reports' }}
+                · last {{ when(user.lastReportedAt) }}
+              </small>
+            </div>
+
+            @if (!user.isActive) {
+              <span class="status status-frozen">Frozen</span>
+            } @else {
+              <span class="status status-active">Active</span>
+            }
+
+            <div class="reported-actions">
+              <button type="button" class="ghost-button" (click)="toggle(user.id)"
+                      [attr.aria-expanded]="expanded().has(user.id)">
+                <app-icon name="eye" [size]="16" />
+                <span>{{ expanded().has(user.id) ? 'Hide' : 'Reports' }}</span>
+              </button>
+              @if (!user.isActive) {
+                <button type="button" class="ghost-button" [disabled]="busyId() === user.id" (click)="unfreeze(user)">
+                  <app-icon name="unblock" [size]="16" />
+                  <span>Unfreeze</span>
+                </button>
+              } @else {
+                <button type="button" class="ghost-button danger" [disabled]="busyId() === user.id" (click)="freeze(user)">
+                  <app-icon name="block" [size]="16" />
+                  <span>Freeze</span>
+                </button>
+                <button type="button" class="ghost-button" [disabled]="busyId() === user.id" (click)="dismiss(user)">
+                  <app-icon name="check" [size]="16" />
+                  <span>Dismiss</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (expanded().has(user.id)) {
+            <ul class="reports">
+              @for (report of user.reports; track report.reporterId) {
+                <li class="report">
+                  <span class="report-by">&#64;{{ report.reporterUsername }}</span>
+                  <span class="report-reason" [class.muted]="!report.reason">{{ report.reason || 'No reason given.' }}</span>
+                  <small class="meta-line">{{ when(report.createdAt) }}</small>
+                </li>
+              }
+            </ul>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

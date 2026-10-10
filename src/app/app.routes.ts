@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/guards/admin.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { incompleteProfileGuard, profileCompleteGuard } from './core/guards/profile-complete.guard';
 
@@ -48,12 +49,6 @@ export const routes: Routes = [
     canActivate: [profileCompleteGuard],
     loadComponent: () => import('./features/discover/discover.component').then(m => m.DiscoverComponent),
     title: 'Discover · GlanceSync'
-  },
-  {
-    path: 'search',
-    canActivate: [profileCompleteGuard],
-    loadComponent: () => import('./features/search/search.component').then(m => m.SearchComponent),
-    title: 'Search · GlanceSync'
   },
   {
     path: 'map',
@@ -106,6 +101,12 @@ export const routes: Routes = [
     canActivate: [profileCompleteGuard],
     loadComponent: () => import('./features/activity/activity.component').then(m => m.ActivityComponent),
     title: 'Activity · GlanceSync'
+  },
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/admin.component').then(m => m.AdminComponent),
+    title: 'Reports · GlanceSync'
   },
   { path: '**', redirectTo: 'chat' }
 ];
