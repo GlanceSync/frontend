@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { DiscoveryCard, DiscoveryPreferences } from '../../interfaces/user/Profile';
+import { AuthService } from '../auth/auth.service';
 
 export interface DiscoveryQuery extends DiscoveryPreferences {
   limit?: number;
@@ -26,6 +27,26 @@ export function defaultOrder(sort: string | null | undefined): SortOrder {
 @Injectable({ providedIn: 'root' })
 export class DiscoveryService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+
+  /**
+   * People passed on Discover, per signed-in user. Kept in memory only: they stay hidden
+   * while moving around the app and come back after a reload. The server never hears of it.
+   */
+  private readonly passedByUser = new Map<string, Set<string>>();
+
+  markPassed(userId: string): void {
+    const viewer = this.auth.currentUser()?.id;
+    if (!viewer) return;
+    let passed = this.passedByUser.get(viewer);
+    if (!passed) this.passedByUser.set(viewer, passed = new Set());
+    passed.add(userId);
+  }
+
+  isPassed(userId: string): boolean {
+    const viewer = this.auth.currentUser()?.id;
+    return !!viewer && !!this.passedByUser.get(viewer)?.has(userId);
+  }
 
   /** Suggestions: the saved preferences, with any field in `query` overriding them. */
   discover(query: DiscoveryQuery = {}): Promise<DiscoveryCard[]> {

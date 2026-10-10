@@ -114,8 +114,10 @@ export class DiscoverComponent {
       this.nextOffset = 0;
       this.hasMore.set(true);
       const page = await this.fetchPage();
-      this.candidates.set(page);
+      this.candidates.set(page.filter(card => !this.discovery.isPassed(card.id)));
       this.index.set(0);
+      // A page of only passed people would otherwise look like the end of the deck.
+      while (!this.candidates().length && this.hasMore()) this.append(await this.fetchPage());
       this.photoIndex.set(0);
     } catch (error) {
       this.toast.apiError(error);
@@ -222,12 +224,15 @@ export class DiscoverComponent {
     }
   }
 
+  /** Hidden for the rest of this visit (cards and list), not recorded anywhere. */
   async pass(): Promise<void> {
-    if (!this.profile() || this.acting()) return;
+    const profile = this.profile();
+    if (!profile || this.acting()) return;
     this.acting.set(true);
+    this.discovery.markPassed(profile.id);
     this.dragX.set(-520);
     await this.delay(180);
-    await this.advance();
+    await this.advance(true);
   }
 
   async like(): Promise<void> {
@@ -242,7 +247,7 @@ export class DiscoverComponent {
       if (state.connected) this.toast.success(`You matched with ${profile.firstName}!`);
       else this.toast.success(`You liked ${profile.firstName}.`);
       await this.delay(180);
-      await this.advance();
+      await this.advance(false);
     } catch (error) {
       this.dragX.set(0);
       this.acting.set(false);
@@ -285,26 +290,39 @@ export class DiscoverComponent {
     if (count > 1) this.photoIndex.update(value => (value + 1) % count);
   }
 
-  private async advance(): Promise<void> {
+  /**
+   * Moves to the next card. A passed card is taken out of the loaded suggestions, so the
+   * next one slides into its place; a liked one stays in the list view until a reload.
+   */
+  private async advance(removeCurrent: boolean): Promise<void> {
+    const current = this.profile();
     try {
-      // Fetch ahead when the deck runs out, so the next card is ready.
-      if (this.index() + 1 >= this.candidates().length && this.hasMore()) {
+      // Fetch ahead when the deck runs out, so the next card is ready. A page can add
+      // nobody new (all passed already), so keep going until there is one or no more.
+      while (this.index() + 1 >= this.candidates().length && this.hasMore()) {
         this.append(await this.fetchPage());
       }
     } catch (error) {
       this.toast.apiError(error);
     }
-    this.index.update(value => value + 1);
+    if (removeCurrent && current) {
+      this.candidates.update(cards => cards.filter(card => card.id !== current.id));
+    } else {
+      this.index.update(value => value + 1);
+    }
     this.dragX.set(0);
     this.photoIndex.set(0);
     this.acting.set(false);
   }
 
-  /** Adds a page, leaving out anyone already loaded in case the results shifted in between. */
+  /**
+   * Adds a page, leaving out anyone already loaded (in case the results shifted in between)
+   * and anyone passed during this visit.
+   */
   private append(page: DiscoveryCard[]): void {
     this.candidates.update(current => {
       const loaded = new Set(current.map(card => card.id));
-      return [...current, ...page.filter(card => !loaded.has(card.id))];
+      return [...current, ...page.filter(card => !loaded.has(card.id) && !this.discovery.isPassed(card.id))];
     });
   }
 
