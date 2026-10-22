@@ -2,7 +2,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ feat/realtime-messaging ]
+    branches: [ main ]
     paths-ignore:
       - '**.md'
   workflow_dispatch: {}
